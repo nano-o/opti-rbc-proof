@@ -11,3 +11,4 @@ The specification is in OptiRBC/OptiRBC.thy
 - Try to not use small standalone helper lemmas outside main lemmas. Thanks to Isar, these can be stated inside the proof of the main lemmas.
 - When checking whether a proof is complete, always check both for errors and for commands that might still be processing. If a command takes too long, consider that a failure and terminate it.
 - Always use UTF-8-Isabelle encoding when writing to theory files.
+- Do not try to use any REPL

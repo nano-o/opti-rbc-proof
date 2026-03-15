@@ -1,5 +1,5 @@
 theory OptiRBC
-  imports Main "HOL-Statespace.StateSpaceSyntax"
+  imports Complex_Main "HOL-Statespace.StateSpaceSyntax"
 begin
 
 section "Specification of the algorithm"
@@ -41,22 +41,22 @@ definition vote_step where
   "vote_step c c' p v \<equiv>
      p \<noteq> broadcaster
      \<and> (\<forall>v'. \<not> (c\<cdot>vote) p v')
-     \<and> card {q. (c\<cdot>echo) q v} \<ge> (n + 1) div 2
+     \<and> card {q. q \<noteq> broadcaster \<and> (c\<cdot>echo) q v} \<ge> \<lceil>n div 2\<rceil>
      \<and> c' = c<vote := (c\<cdot>vote)(p := ((c\<cdot>vote) p)(v := True))>"
 
 definition ack_step where
   "ack_step c c' p v \<equiv>
      p \<noteq> broadcaster
      \<and> (\<forall>v'. \<not> (c\<cdot>ack) p v')
-     \<and> (card {q. (c\<cdot>vote) q v} \<ge> ((n + f + 1) div 2) - 1
-        \<or> card {q. (c\<cdot>echo) q v} \<ge> ((n + f + 1) div 2) - 1)
+     \<and> (card {q. q \<noteq> broadcaster \<and> (c\<cdot>vote) q v} \<ge> \<lceil>(n + f - 1) div 2\<rceil>
+        \<or> card {q. q \<noteq> broadcaster \<and> (c\<cdot>echo) q v} \<ge> \<lceil>(n + f - 1) div 2\<rceil>)
      \<and> c' = c<ack := (c\<cdot>ack)(p := ((c\<cdot>ack) p)(v := True))>"
 
 definition ready_step where
   "ready_step c c' p v \<equiv>
      p \<noteq> broadcaster
      \<and> (\<forall>v'. \<not> (c\<cdot>ready) p v')
-     \<and> (card {q. (c\<cdot>ack) q v} \<ge> ((n + f + 1) div 2) - 1
+     \<and> (card {q. q \<noteq> broadcaster \<and> (c\<cdot>ack) q v} \<ge> \<lceil>(n + f - 1) div 2\<rceil>
         \<or> card {q. (c\<cdot>ready) q v} \<ge> f + 1)
      \<and> c' = c<ready := (c\<cdot>ready)(p := ((c\<cdot>ready) p)(v := True))>"
 
@@ -64,7 +64,7 @@ definition opt_commit_step where
   "opt_commit_step c c' p v \<equiv>
      p \<noteq> broadcaster
      \<and> (\<forall>v'. \<not> (c\<cdot>committed) p v')
-     \<and> card {q. (c\<cdot>echo) q v} \<ge> (n + 2 * f + 1) div 2
+     \<and> card {q. q \<noteq> broadcaster \<and> (c\<cdot>echo) q v} \<ge> \<lceil>(n + 2*f - 2) div 2\<rceil>
      \<and> c' = c<committed := (c\<cdot>committed)(p := ((c\<cdot>committed) p)(v := True))>"
 
 definition commit_step where
@@ -102,6 +102,18 @@ definition init where
           \<and> \<not> (c\<cdot>ack) p v
           \<and> \<not> (c\<cdot>ready) p v
           \<and> \<not> (c\<cdot>committed) p v)"
+
+definition inductive_invariant where
+  "inductive_invariant I \<equiv>
+     (\<forall>c. init c \<longrightarrow> I c)
+     \<and> (\<forall>c c'. I c \<longrightarrow> step c c' \<longrightarrow> I c')"
+
+definition inv1 where 
+  \<comment> \<open>if the broadcaster is faulty and a non-faulty party commits v, then either there are f+1 non-faulty parties ready for v or there are ceil((n+2f-2)/2)-(f-1) non-faulty non-
+  broadcaster parties that echoed v.\<close>
+  "inv1 c \<equiv> \<forall> p v . broadcaster \<in> faulty \<and> p \<notin> faulty \<and> (c\<cdot>committed) p v \<longrightarrow>
+    card {p . p \<notin> faulty \<and> (c\<cdot>ready) p v} \<ge> f+1
+    \<or> card {p . p \<notin> faulty \<and> (c\<cdot>echo) p v} \<ge> \<lceil>(n + 2*f - 2) div 2\<rceil>-f+1"
 
 end
 
