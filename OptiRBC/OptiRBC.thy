@@ -108,14 +108,47 @@ qed
 lemma card_lemma_4:
   assumes "card S\<^sub>1 \<ge> 2*f +1"
   shows "card (S\<^sub>1 - faulty) \<ge> f +1"
-  oops
+  text \<open>At most @{term f} elements of @{term S\<^sub>1} can be faulty, so removing faulty elements
+    leaves at least @{term "2*f + 1 - f"} = @{term "f + (1::nat)"} elements.\<close>
+proof -
+  have "card (S\<^sub>1 \<inter> faulty) \<le> f"
+    by (metis Int_lower2 card_mono f_def finite)
+  moreover have "card (S\<^sub>1 - faulty) = card S\<^sub>1 - card (S\<^sub>1 \<inter> faulty)"
+    by (metis card_Diff_subset_Int finite)
+  ultimately show ?thesis using assms by linarith
+qed
 
 lemma card_lemma_5:
   assumes "broadcaster \<in> faulty"
     and "broadcaster \<notin> S\<^sub>1" 
     and "card S\<^sub>1 \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>"
   shows "card (S\<^sub>1 - faulty) \<ge> \<lceil>real n / 2\<rceil>"
-  oops
+  text \<open>Since @{term "broadcaster \<in> faulty"} but @{term "broadcaster \<notin> S\<^sub>1"}, at most @{term "f - 1::nat"}
+    faulty elements are in @{term S\<^sub>1}. So @{term "card (S\<^sub>1 - faulty)"} is at least
+    @{term "\<lceil>real (n + 2*f - 2) / 2\<rceil> - int (f - 1)"}. Since
+    @{term "\<lceil>real (n + 2*f - 2) / 2\<rceil> = \<lceil>real n / 2\<rceil> + int f - 1"}, the result follows.\<close>
+proof -
+  have f_pos: "f \<ge> 1"
+    by (metis One_nat_def \<open>broadcaster \<in> faulty\<close> bot_nat_0.extremum_unique card.remove f_def finite nat.simps(3) not_less_eq_eq)
+  have "card (S\<^sub>1 \<inter> faulty) \<le> f - 1"
+    by (metis Int_iff Int_lower2 assms(1,2) card.remove card_Diff_singleton_if card_seteq f_def finite not_less_eq_eq)
+  moreover have "card (S\<^sub>1 - faulty) = card S\<^sub>1 - card (S\<^sub>1 \<inter> faulty)"
+    by (metis card_Diff_subset_Int finite)
+  moreover have "\<lceil>real (n + 2*f - 2) / 2\<rceil> = \<lceil>real n / 2\<rceil> + int f - 1"
+  proof -
+    have "n + 2*f \<ge> 2" using f_pos by linarith
+    hence "real (n + 2*f - 2) / 2 = real n / 2 + real f - 1"
+      by (simp add: of_nat_diff field_simps)
+    thus ?thesis by linarith
+  qed
+  moreover have "card (S\<^sub>1 \<inter> faulty) \<le> card S\<^sub>1"
+    by (simp add: card_mono)
+  ultimately have "int (card (S\<^sub>1 - faulty)) \<ge> int (card S\<^sub>1) - int (f - 1)"
+    by (simp add: card_Diff_subset_Int card_mono of_nat_diff)
+  moreover have "int (card S\<^sub>1) \<ge> \<lceil>real n / 2\<rceil> + int f - 1"
+    using assms(3) by linarith
+  ultimately show ?thesis using f_pos by linarith
+qed
 
 end
 
