@@ -23,6 +23,7 @@ The specification is in OptiRBC/OptiRBC.thy
 - If needed, you can find Isabelle documentation PDF files somewhere in the Isabelle distribution
 - Note that the IQ method `write_file` does not write to disk but only update the file as it's loaded in Isabelle/jEdit. Use `save_file` to write to disk.
 - In proofs, when some established or assumed propositions are no too long, avoid creating names for them and instead use `‹...›`
+- When a type is of type class `finite`, no need to prove that sets of elements of this type are finite. The simplifier and other proof methods can derive that on their own.
 
 ### Encoding note for theory files:
 - Full file recreationg/overwrite can cause Isabelle/JEdit to reset the endoding
