@@ -33,75 +33,42 @@ proof -
     hence "card faulty > 0" by (simp add: card_gt_0_iff)
     thus ?thesis by (simp add: f_def)
   qed
-  have S1_sub: "S\<^sub>1 \<subseteq> UNIV - {broadcaster}" using \<open>broadcaster \<notin> S\<^sub>1\<close> by auto
-  have S2_sub: "S\<^sub>2 \<subseteq> UNIV - {broadcaster}" using \<open>broadcaster \<notin> S\<^sub>2\<close> by auto
   have card_U: "card (UNIV - {broadcaster} :: 'p set) = n - 1"
     using n_pos by (simp add: n_def)
   text \<open>By inclusion-exclusion, the intersection is large enough.\<close>
   have ie: "card (S\<^sub>1 \<inter> S\<^sub>2) + (n - 1) \<ge> card S\<^sub>1 + card S\<^sub>2"
   proof -
-    have union_le: "card (S\<^sub>1 \<union> S\<^sub>2) \<le> n - 1"
-      using card_mono[OF _ Set.Un_least[OF S1_sub S2_sub]]
-      by (simp add: card_U)
-    have "card S\<^sub>1 + card S\<^sub>2 = card (S\<^sub>1 \<union> S\<^sub>2) + card (S\<^sub>1 \<inter> S\<^sub>2)"
-      using card_Un_Int
-      by (metis finite) 
-    thus ?thesis using union_le by linarith
+    have "card (S\<^sub>1 \<union> S\<^sub>2) \<le> n - 1"
+      by (metis Diff_empty Un_iff \<open>broadcaster \<notin> S\<^sub>1\<close> \<open>broadcaster \<notin> S\<^sub>2\<close> card_U card_mono finite_Diff finite_UNIV subset_Diff_insert subset_UNIV)
+    moreover have "card S\<^sub>1 + card S\<^sub>2 = card (S\<^sub>1 \<union> S\<^sub>2) + card (S\<^sub>1 \<inter> S\<^sub>2)"
+      by (metis card_Un_Int finite)
+    ultimately show ?thesis by linarith
   qed
-  text \<open>The sum of cardinalities is at least @{term "n + f - 1::nat"}.\<close>
+  text \<open>The sum of cardinalities is at least @{term "n + f - 1::nat"} in int.\<close>
   have sum_bound: "int (card S\<^sub>1) + int (card S\<^sub>2) \<ge> int n + int f - 1"
   proof -
-    have "int (card S\<^sub>1) \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>" using \<open>card S\<^sub>1 \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>\<close> by simp
-    moreover have "int (card S\<^sub>2) \<ge> \<lceil>real n / 2\<rceil>" using \<open>card S\<^sub>2 \<ge> \<lceil>real n / 2\<rceil>\<close> by simp
-    moreover have "\<lceil>real (n + 2*f - 2) / 2\<rceil> \<ge> (real (n + 2*f - 2)) / 2"
-      by (rule le_of_int_ceiling)
-    moreover have "\<lceil>real n / 2\<rceil> \<ge> real n / 2"
-      by (rule le_of_int_ceiling)
-    moreover have "(real (n + 2*f - 2)) / 2 + real n / 2 = real n + real f - 1"
-    proof -
-      have "n + 2*f \<ge> 2" using n_pos f_pos by linarith
-      hence "real (n + 2*f - 2) = real n + 2 * real f - 2"
-        by (simp add: of_nat_diff)
-      thus ?thesis by (simp add: field_simps)
-    qed
-    ultimately show ?thesis by linarith
+    have "n + 2*f \<ge> 2" using n_pos f_pos by linarith
+    hence "real (n + 2*f - 2) / 2 + real n / 2 = real n + real f - 1"
+      by (simp add: of_nat_diff field_simps)
+    thus ?thesis
+      using \<open>card S\<^sub>1 \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>\<close> \<open>card S\<^sub>2 \<ge> \<lceil>real n / 2\<rceil>\<close>
+        le_of_int_ceiling[of "real (n + 2*f - 2) / 2"]
+        le_of_int_ceiling[of "real n / 2"]
+      by linarith
   qed
   text \<open>So the intersection has at least @{term "f::nat"} elements.\<close>
   have inter_card: "int (card (S\<^sub>1 \<inter> S\<^sub>2)) \<ge> int f"
-  proof -
-    have "int (card (S\<^sub>1 \<inter> S\<^sub>2)) + int (n - 1) \<ge> int (card S\<^sub>1) + int (card S\<^sub>2)"
-      using ie by linarith
-    moreover have "int n - 1 \<ge> int (n - 1)" using n_pos by simp
-    ultimately show ?thesis using sum_bound by linarith
-  qed
+    using ie sum_bound n_pos by linarith
   text \<open>Broadcaster is in faulty but not in the intersection, so at most @{term "f - 1::nat"}
     faulty elements are in the intersection.\<close>
-  have bc_not_inter: "broadcaster \<notin> S\<^sub>1 \<inter> S\<^sub>2" using \<open>broadcaster \<notin> S\<^sub>1\<close> by auto
   have faulty_inter: "card (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2)) \<le> f - 1"
-  proof -
-    have sub: "faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2) \<subseteq> faulty - {broadcaster}"
-      using bc_not_inter by auto
-    have "card (faulty - {broadcaster}) = f - 1"
-      using \<open>broadcaster \<in> faulty\<close> by (simp add: f_def card_Diff_singleton)
-    moreover have "card (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2)) \<le> card (faulty - {broadcaster})"
-      using card_mono[OF _ sub] by simp
-    ultimately show ?thesis by simp
-  qed
+    by (metis Int_iff Int_lower1 One_nat_def \<open>broadcaster \<in> faulty\<close> \<open>broadcaster \<notin> S\<^sub>1\<close> bot_nat_0.extremum_unique card.infinite card.remove card_Diff_singleton_if card_seteq f_def f_pos not_less_eq_eq)
   text \<open>Conclude that the intersection minus faulty is nonempty.\<close>
   have "card ((S\<^sub>1 \<inter> S\<^sub>2) - faulty) \<ge> 1"
   proof -
-    have diff_eq: "card ((S\<^sub>1 \<inter> S\<^sub>2) - faulty) = card (S\<^sub>1 \<inter> S\<^sub>2) - card (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2))"
-    proof -
-      have "finite (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2))" by simp
-      moreover have "faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2) \<subseteq> S\<^sub>1 \<inter> S\<^sub>2" by auto
-      ultimately have "card (S\<^sub>1 \<inter> S\<^sub>2 - (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2))) = card (S\<^sub>1 \<inter> S\<^sub>2) - card (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2))"
-        by (rule card_Diff_subset)
-      moreover have "S\<^sub>1 \<inter> S\<^sub>2 - faulty = S\<^sub>1 \<inter> S\<^sub>2 - (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2))" by auto
-      ultimately show ?thesis by simp
-    qed
-    have "int (card (S\<^sub>1 \<inter> S\<^sub>2)) - int (card (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2))) \<ge> 1"
-      using inter_card faulty_inter f_pos by linarith
-    thus ?thesis using diff_eq by linarith
+    have "card ((S\<^sub>1 \<inter> S\<^sub>2) - faulty) = card (S\<^sub>1 \<inter> S\<^sub>2) - card (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2))"
+      by (simp add: card_Diff_subset_Int inf_commute)
+    thus ?thesis using inter_card faulty_inter f_pos by linarith
   qed
   thus ?thesis by (metis card.empty not_one_le_zero)
 qed

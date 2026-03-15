@@ -24,6 +24,7 @@ The specification is in OptiRBC/OptiRBC.thy
 - Note that the IQ method `write_file` does not write to disk but only update the file as it's loaded in Isabelle/jEdit. Use `save_file` to write to disk.
 - In proofs, when some established or assumed propositions are no too long, avoid creating names for them and instead use `‹...›`
 - When a type is of type class `finite`, no need to prove that sets of elements of this type are finite. The simplifier and other proof methods can derive that on their own.
+- To run sledgehammer on a goal without a REPL, use `mcp__iq__explore` with `query="sledgehammer"`. The pattern must identify the **proposition statement** (e.g., `have f_pos: "f ≥ 1"`), NOT the existing proof-method line (e.g., `by auto`). The tool runs sledgehammer on the goal **after** the anchor command, so anchoring on the `by` line would target the wrong proof state. Leave the `arguments` field empty (do not pass it) to use the default provers and timeout; passing anything other than prover names in `arguments` breaks the query. Do not run more that 2 sledgehammer queries in parallel.
 
 ### Encoding note for theory files:
 - Full file recreationg/overwrite can cause Isabelle/JEdit to reset the endoding
