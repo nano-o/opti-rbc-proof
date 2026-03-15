@@ -2,7 +2,7 @@
 
 In this project, we are developing a specification and proof of safety and liveness, in Isabelle/HOL, of the algorithm in described in Optimistic_RBC.pdf
 
-The specification is in OptiRBC/OptiRBC.thy
+The specification consists of OptiRBC/OptiRBC.thy and OptiRBC/DomainModel.thy and OptiRBC/AxiomaticDomainModel.thy
 
 ## Instructions
 

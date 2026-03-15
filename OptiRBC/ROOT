@@ -3,6 +3,6 @@ session OptiRBC = "HOL-Statespace" +
   sessions
     "HOL-Eisbach"
   theories
-    OptiRBC
+    OptiRBC DomainModel AxiomaticDomainModel
   document_files
     "root.tex"
