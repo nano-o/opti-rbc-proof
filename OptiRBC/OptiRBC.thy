@@ -2,7 +2,7 @@ theory OptiRBC
   imports Complex_Main Timed_Methods "HOL-Statespace.StateSpaceSyntax" "HOL-Eisbach.Eisbach"
 begin
 
-section "Specification of the algorithm"
+section "domain model"
 
 locale domain_model =
   fixes faulty :: "('p::finite) set"
@@ -60,14 +60,27 @@ proof -
 qed
 
 lemma card_lemma_2:
-  \<comment> \<open>This should follows immediately from @{thm [source] card_lemma_1} because @{term "\<lceil>real (n + f - 1) / 2\<rceil> \<ge> \<lceil>real n / 2\<rceil>"} when @{term "f>0"}\<close>
+  \<comment> \<open>This follows from @{thm [source] card_lemma_1} because @{term "\<lceil>real (n + f - 1) / 2\<rceil> \<ge> \<lceil>real n / 2\<rceil>"} when @{term "f>0"}.\<close>
   assumes "broadcaster \<in> faulty"
     and "broadcaster \<notin> S\<^sub>1"
     and "card S\<^sub>1 \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>"
     and "broadcaster \<notin> S\<^sub>2"
     and "card S\<^sub>2 \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
   shows "(S\<^sub>1 \<inter> S\<^sub>2) - faulty \<noteq> {}"
-  oops
+  text \<open>Since @{term "f \<ge> 1"}, we have @{term "\<lceil>real (n + f - 1) / 2\<rceil> \<ge> \<lceil>real n / 2\<rceil>"},
+    so the assumption on @{term S\<^sub>2} is at least as strong as what @{thm [source] card_lemma_1} requires.
+    We apply @{thm [source] card_lemma_1} directly.\<close>
+proof -
+  have "f \<ge> 1"
+    by (metis One_nat_def \<open>broadcaster \<in> faulty\<close> bot_nat_0.extremum_unique card.remove f_def finite nat.simps(3) not_less_eq_eq)
+  hence "\<lceil>real (n + f - 1) / 2\<rceil> \<ge> \<lceil>real n / 2\<rceil>"
+    by (intro ceiling_mono divide_right_mono) linarith+
+  hence "card S\<^sub>2 \<ge> \<lceil>real n / 2\<rceil>"
+    using \<open>card S\<^sub>2 \<ge> \<lceil>real (n + f - 1) / 2\<rceil>\<close> by linarith
+  thus ?thesis
+    using card_lemma_1[OF \<open>broadcaster \<in> faulty\<close> \<open>broadcaster \<notin> S\<^sub>1\<close> \<open>card S\<^sub>1 \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>\<close> \<open>broadcaster \<notin> S\<^sub>2\<close>]
+    by blast
+qed
 
 lemma card_lemma_3:
   \<comment> \<open>This should follows immediately from @{thm [source] card_lemma_1} because @{term "\<lceil>real (n + 2*f - 2) / 2\<rceil> \<ge> \<lceil>real n / 2\<rceil>"} when @{term "f>0"}\<close>
@@ -77,7 +90,20 @@ lemma card_lemma_3:
     and "broadcaster \<notin> S\<^sub>2"
     and "card S\<^sub>2 \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>"
   shows "((S\<^sub>1 \<inter> S\<^sub>2) - faulty) \<noteq> {}"
-  oops
+  text \<open>Since @{term "f \<ge> 1"}, we have @{term "\<lceil>real (n + 2*f - 2) / 2\<rceil> \<ge> \<lceil>real n / 2\<rceil>"},
+    so the assumption on @{term S\<^sub>2} implies the weaker bound needed by @{thm [source] card_lemma_1}.
+    We apply @{thm [source] card_lemma_1} directly.\<close>
+proof -
+  have "f \<ge> 1"
+    by (metis One_nat_def \<open>broadcaster \<in> faulty\<close> bot_nat_0.extremum_unique card.remove f_def finite nat.simps(3) not_less_eq_eq)
+  hence "\<lceil>real (n + 2*f - 2) / 2\<rceil> \<ge> \<lceil>real n / 2\<rceil>"
+    by (intro ceiling_mono divide_right_mono) linarith+
+  hence "card S\<^sub>2 \<ge> \<lceil>real n / 2\<rceil>"
+    using \<open>card S\<^sub>2 \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>\<close> by linarith
+  thus ?thesis
+    using card_lemma_1[OF \<open>broadcaster \<in> faulty\<close> \<open>broadcaster \<notin> S\<^sub>1\<close> \<open>card S\<^sub>1 \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>\<close> \<open>broadcaster \<notin> S\<^sub>2\<close>]
+    by blast
+qed
 
 lemma card_lemma_4:
   assumes "card S\<^sub>1 \<ge> 2*f +1"

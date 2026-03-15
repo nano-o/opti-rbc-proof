@@ -16,7 +16,7 @@ The specification is in OptiRBC/OptiRBC.thy
 - Don't use reserved keywords like "prop" or "term" to name a fact.
 - The user might chose to import the theory `Timed_Methods.thy`. This theory wraps common methods (`auto`, `simp`, `simp_all`, `blast`, `metis`) to enforce short timeouts. The wrappers emit warnings like `auto: timeout`, `simp: timeout`, or `blast: timeout`; treat those warnings as the signal that the method failed due to a timeout, not because the proof step is invalid.
 - Do not use `(* ... *)` comments in theory files; prefer `text ‹...›` so notes appear in the typeset document.
-- When writing comments, use term antiquotations `@{term "..."}` (don't use "prop"). Math symbols or even names with underscores, if outside antiquotations, will cause latex failures during document processing.
+- When writing comments, use term antiquotations `@{term "..."}` (don't use "prop"). Math symbols or even names with underscores, if outside antiquotations, will cause latex failures during document processing. To refer to lemma or theorem by name, use `@{thm [source] "..."}`.
 - When addressing Isabelle warnings, fix ones with a clear one-line change, and leave any that require more than a one-line adjustment.
 - Before considering a task complete, use `isabelle build` to check that everything builds properly.
   Also make sure the proof sketches for any newly completed proof are still accurate.
@@ -24,8 +24,13 @@ The specification is in OptiRBC/OptiRBC.thy
 - Note that the IQ method `write_file` does not write to disk but only update the file as it's loaded in Isabelle/jEdit. Use `save_file` to write to disk.
 - In proofs, when some established or assumed propositions are no too long, avoid creating names for them and instead use `‹...›`
 - When a type is of type class `finite`, no need to prove that sets of elements of this type are finite. The simplifier and other proof methods can derive that on their own.
+- After finishing a proof, try simplifying it as follows. Identify each top-level proposition in the proof that has a multi-line proof, and invoke sledgehammer on each of them. If sledgehammer finds a one-liner, use it instead of the previous proof. Once you tried all top-level propositions, do it for each second-level proposition that have a multi-line proof, etc.
+
+### Using sledgehammer
+
 - To run sledgehammer on a goal without a REPL, use `mcp__iq__explore` with `query="sledgehammer"`. The pattern must identify the **proposition statement** (e.g., `have f_pos: "f ≥ 1"`), NOT the existing proof-method line (e.g., `by auto`). The tool runs sledgehammer on the goal **after** the anchor command, so anchoring on the `by` line would target the wrong proof state. Leave the `arguments` field empty (do not pass it) to use the default provers and timeout; passing anything other than prover names in `arguments` breaks the query. Do not run more that 2 sledgehammer queries in parallel.
 - **Important**: The IQ sledgehammer tool may report `"success": false` and `"timed_out": true` even when a prover *did* find a proof. This happens because the tool waits for all provers to finish and times out on the slow ones. Always check the `results` field for proof suggestions regardless of the `success`/`timed_out` flags — a valid `Try this:` line in `results` is a successful proof even if the overall call reports failure.
+- **Important**: After each sledgehammer invocation, check that no prover processes are lingering. If there are, kill them.
 
 ### Encoding note for theory files:
 - Full file recreationg/overwrite can cause Isabelle/JEdit to reset the endoding
