@@ -28,22 +28,12 @@ lemma card_lemma_1:
 proof -
   have n_pos: "n \<ge> 1" using fault_bound by (simp add: n_def)
   have f_pos: "f \<ge> 1"
-  proof -
-    have "faulty \<noteq> {}" using \<open>broadcaster \<in> faulty\<close> by auto
-    hence "card faulty > 0" by (simp add: card_gt_0_iff)
-    thus ?thesis by (simp add: f_def)
-  qed
+    by (metis One_nat_def \<open>broadcaster \<in> faulty\<close> bot_nat_0.extremum_unique card.remove f_def finite nat.simps(3) not_less_eq_eq)
   have card_U: "card (UNIV - {broadcaster} :: 'p set) = n - 1"
     using n_pos by (simp add: n_def)
   text \<open>By inclusion-exclusion, the intersection is large enough.\<close>
   have ie: "card (S\<^sub>1 \<inter> S\<^sub>2) + (n - 1) \<ge> card S\<^sub>1 + card S\<^sub>2"
-  proof -
-    have "card (S\<^sub>1 \<union> S\<^sub>2) \<le> n - 1"
-      by (metis Diff_empty Un_iff \<open>broadcaster \<notin> S\<^sub>1\<close> \<open>broadcaster \<notin> S\<^sub>2\<close> card_U card_mono finite_Diff finite_UNIV subset_Diff_insert subset_UNIV)
-    moreover have "card S\<^sub>1 + card S\<^sub>2 = card (S\<^sub>1 \<union> S\<^sub>2) + card (S\<^sub>1 \<inter> S\<^sub>2)"
-      by (metis card_Un_Int finite)
-    ultimately show ?thesis by linarith
-  qed
+    by (metis Diff_empty Un_iff add.commute add_le_cancel_right \<open>broadcaster \<notin> S\<^sub>1\<close> \<open>broadcaster \<notin> S\<^sub>2\<close> card_U card_Un_Int card_mono finite subset_Diff_insert subset_UNIV)
   text \<open>The sum of cardinalities is at least @{term "n + f - 1::nat"} in int.\<close>
   have sum_bound: "int (card S\<^sub>1) + int (card S\<^sub>2) \<ge> int n + int f - 1"
   proof -
@@ -65,11 +55,7 @@ proof -
     by (metis Int_iff Int_lower1 One_nat_def \<open>broadcaster \<in> faulty\<close> \<open>broadcaster \<notin> S\<^sub>1\<close> bot_nat_0.extremum_unique card.infinite card.remove card_Diff_singleton_if card_seteq f_def f_pos not_less_eq_eq)
   text \<open>Conclude that the intersection minus faulty is nonempty.\<close>
   have "card ((S\<^sub>1 \<inter> S\<^sub>2) - faulty) \<ge> 1"
-  proof -
-    have "card ((S\<^sub>1 \<inter> S\<^sub>2) - faulty) = card (S\<^sub>1 \<inter> S\<^sub>2) - card (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2))"
-      by (simp add: card_Diff_subset_Int inf_commute)
-    thus ?thesis using inter_card faulty_inter f_pos by linarith
-  qed
+    by (metis Diff_Diff_Int Diff_empty Int_lower2 One_nat_def card.empty card_seteq dec_greater_eq_self_imp_bot empty_subsetI f_def f_pos faulty_inter finite inter_card not_less_eq_eq of_nat_le_iff)
   thus ?thesis by (metis card.empty not_one_le_zero)
 qed
 

@@ -25,6 +25,7 @@ The specification is in OptiRBC/OptiRBC.thy
 - In proofs, when some established or assumed propositions are no too long, avoid creating names for them and instead use `‹...›`
 - When a type is of type class `finite`, no need to prove that sets of elements of this type are finite. The simplifier and other proof methods can derive that on their own.
 - To run sledgehammer on a goal without a REPL, use `mcp__iq__explore` with `query="sledgehammer"`. The pattern must identify the **proposition statement** (e.g., `have f_pos: "f ≥ 1"`), NOT the existing proof-method line (e.g., `by auto`). The tool runs sledgehammer on the goal **after** the anchor command, so anchoring on the `by` line would target the wrong proof state. Leave the `arguments` field empty (do not pass it) to use the default provers and timeout; passing anything other than prover names in `arguments` breaks the query. Do not run more that 2 sledgehammer queries in parallel.
+- **Important**: The IQ sledgehammer tool may report `"success": false` and `"timed_out": true` even when a prover *did* find a proof. This happens because the tool waits for all provers to finish and times out on the slow ones. Always check the `results` field for proof suggestions regardless of the `success`/`timed_out` flags — a valid `Try this:` line in `results` is a successful proof even if the overall call reports failure.
 
 ### Encoding note for theory files:
 - Full file recreationg/overwrite can cause Isabelle/JEdit to reset the endoding
