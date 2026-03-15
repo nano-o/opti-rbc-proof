@@ -24,7 +24,8 @@ The specification is in OptiRBC/OptiRBC.thy
 - Note that the IQ method `write_file` does not write to disk but only update the file as it's loaded in Isabelle/jEdit. Use `save_file` to write to disk.
 - In proofs, when some established or assumed propositions are no too long, avoid creating names for them and instead use `‹...›`
 - When a type is of type class `finite`, no need to prove that sets of elements of this type are finite. The simplifier and other proof methods can derive that on their own.
-- After finishing a proof, try simplifying it as follows. Identify each top-level proposition in the proof that has a multi-line proof, and invoke sledgehammer on each of them. If sledgehammer finds a one-liner, use it instead of the previous proof. Once you tried all top-level propositions, do it for each second-level proposition that have a multi-line proof, etc.
+- After finishing a proof, try simplifying it as follows. Identify each top-level proposition in the proof that has a multi-line proof, and invoke sledgehammer on each of them. If sledgehammer finds a one-liner, use it instead of the previous proof. Once you tried all top-level propositions, do it for each second-level proposition that have a multi-line proof, etc. A "one-liner" means the proposition is already closed by a single proof method (e.g. `by auto`, `by simp`, `by blast`, `by (metis ...)`, `by linarith`, etc.). Only run sledgehammer on propositions whose proof spans multiple commands (e.g. an `apply`/`apply`/`done` chain, or a nested `proof ... qed` block).
+- If you struggle with the proof of some claim that you think should hold, after a few attempts try sledgehammer.
 
 ### Using sledgehammer
 
