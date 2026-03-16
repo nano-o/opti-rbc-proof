@@ -1,22 +1,21 @@
 theory OptiRBC
   imports Complex_Main Timed_Methods "HOL-Statespace.StateSpaceSyntax" "HOL-Eisbach.Eisbach"
-    DomainModel
+    AxiomaticDomainModel
 begin
 
 section "domain model"
 
-statespace ('p, 'v) vars =
+statespace 'v vars =
   proposal :: "'v \<Rightarrow> bool"
-  echo :: "'p \<Rightarrow> 'v \<Rightarrow> bool"
-  vote :: "'p \<Rightarrow> 'v \<Rightarrow> bool"
-  ack :: "'p \<Rightarrow> 'v \<Rightarrow> bool"
-  ready :: "'p \<Rightarrow> 'v \<Rightarrow> bool"
-  committed :: "'p \<Rightarrow> 'v \<Rightarrow> bool"
+  echo :: "party \<Rightarrow> 'v \<Rightarrow> bool"
+  vote :: "party \<Rightarrow> 'v \<Rightarrow> bool"
+  ack :: "party \<Rightarrow> 'v \<Rightarrow> bool"
+  ready :: "party \<Rightarrow> 'v \<Rightarrow> bool"
+  committed :: "party \<Rightarrow> 'v \<Rightarrow> bool"
 
 named_theorems protocol_defs
 
-locale protocol = domain_model faulty _ _ + vars _ _ _ _ _ _  project_HOL_bool_'v_fun_'p_fun _ _ _
-  for faulty :: "'p::finite set" and project_HOL_bool_'v_fun_'p_fun :: "'state \<Rightarrow> 'p \<Rightarrow> 'v \<Rightarrow> bool"
+context vars
 begin
 
 definition propose_step where
@@ -149,7 +148,7 @@ next
   fix c c'
   assume inv: "I c" and st: "step c c'"
   from st show "I c'"
-    by (metis ack_case byzantine_case commit_case echo_case inv opt_commit_case propose_case protocol.step_cases protocol_axioms
+    by (metis ack_case byzantine_case commit_case echo_case inv opt_commit_case propose_case step_cases
         ready_case vote_case)
 qed
 
