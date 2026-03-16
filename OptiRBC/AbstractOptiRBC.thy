@@ -265,9 +265,90 @@ qed
 
 definition inv2 where
   "inv2 c \<equiv> \<forall> p v . broadcaster \<in> faulty \<and> p \<notin> faulty \<and> (c\<cdot>committed) p v \<longrightarrow>
-    (\<exists>Q. \<forall>q. quorum_member Q q \<longrightarrow> q \<notin> faulty \<and> (c\<cdot>ack) q v)
+    (\<exists>Q. \<forall>q. quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>ack) q v)
+    \<or> (\<exists>Q. \<forall>q. amplification_quorum_member Q q \<longrightarrow> q \<notin> faulty \<and> (c\<cdot>ready) q v)
     \<or> (\<exists>Q. \<forall>q. vote_quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>echo) q v)"
 
-end
-
-end
+lemma inv2_inductive:
+  "inductive_invariant inv2"
+  text \<open>Proof sketch: Case-split on transitions using @{thm [source] inductive_invariant_stepsI}.
+    The init case is vacuous (no party has committed). Most honest steps do not change
+    @{term committed}, so the antecedent is unchanged; echo, ack, and ready steps can only
+    make the consequent easier to satisfy since they add True entries.
+    For @{term opt_commit_step}: the committing party saw an optimistic quorum of echoes, and
+    @{thm [source] opt_quorum_contains_vote_quorum} extracts a vote quorum of non-faulty
+    members who all echoed the committed value (third disjunct).
+    For @{term commit_step}: the committing party saw a commit quorum of ready parties, and
+    @{thm [source] commit_quorum_contains_amplification_quorum} extracts an amplification
+    quorum of non-faulty members who are all ready (second disjunct).
+    For @{term byzantine_step}: only faulty parties' fields change, and the invariant's
+    consequent refers only to non-faulty parties' @{term ack}, @{term ready}, and @{term echo},
+    so it is preserved.\<close>
+proof (inductive_invariant_cases)
+  fix c
+  assume "init c"
+  then show "inv2 c"
+    unfolding inv2_def init_def by simp
+next
+  fix c c'
+  assume inv: "inv2 c" and step: "byzantine_step c c'"
+  then show "inv2 c'"
+    unfolding inv2_def byzantine_step_def
+    apply auto
+    apply meson
+    apply (smt (verit))
+    apply meson
+    apply (smt (verit))
+    by meson
+next
+  fix c c' v
+  assume inv: "inv2 c" and step: "propose_step c c' v"
+  then show "inv2 c'"
+    unfolding inv2_def propose_step_def by auto
+next
+  fix c c' p v
+  assume inv: "inv2 c" and step: "echo_step c c' p v"
+  then show "inv2 c'"
+    unfolding inv2_def echo_step_def
+    apply auto
+    apply blast
+    by blast
+next
+  fix c c' p v
+  assume inv: "inv2 c" and step: "vote_step c c' p v"
+  then show "inv2 c'"
+    unfolding inv2_def vote_step_def by auto
+next
+  fix c c' p v
+  assume inv: "inv2 c" and step: "ack_step c c' p v"
+  then show "inv2 c'"
+    unfolding inv2_def ack_step_def
+    apply auto
+    apply blast
+    apply blast
+    apply (smt (verit))
+    by blast
+next
+  fix c c' p v
+  assume inv: "inv2 c" and step: "ready_step c c' p v"
+  then show "inv2 c'"
+    unfolding inv2_def ready_step_def
+    apply auto
+    apply blast
+    apply blast
+    by blast
+next
+  fix c c' p v
+  assume inv: "inv2 c" and step: "opt_commit_step c c' p v"
+  then show "inv2 c'"
+    unfolding inv2_def opt_commit_step_def
+    apply auto
+    by (metis opt_quorum_contains_vote_quorum)
+next
+  fix c c' p v
+  assume inv: "inv2 c" and step: "commit_step c c' p v"
+  then show "inv2 c'"
+    unfolding inv2_def commit_step_def
+    apply auto
+    by (metis commit_quorum_contains_amplification_quorum)
+qed
