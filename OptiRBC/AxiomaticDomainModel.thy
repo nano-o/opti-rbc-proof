@@ -165,7 +165,7 @@ proof -
   proof -
     have "n + 2*f \<ge> 2" using n_pos f_pos by linarith
     hence "real (n + 2*f - 2) / 2 + real n / 2 = real n + real f - 1"
-      by (simp add: of_nat_diff field_simps)
+      by (simp add: field_simps)
     thus ?thesis
       using \<open>card S\<^sub>1 \<ge> \<lceil>real (n + 2*f - 2) / 2\<rceil>\<close> \<open>card S\<^sub>2 \<ge> \<lceil>real n / 2\<rceil>\<close>
         le_of_int_ceiling[of "real (n + 2*f - 2) / 2"]
@@ -264,13 +264,13 @@ proof -
   proof -
     have "n + 2*f \<ge> 2" using f_pos by linarith
     hence "real (n + 2*f - 2) / 2 = real n / 2 + real f - 1"
-      by (simp add: of_nat_diff field_simps)
+      by (simp add: field_simps)
     thus ?thesis by linarith
   qed
   moreover have "card (S\<^sub>1 \<inter> faulty) \<le> card S\<^sub>1"
     by (simp add: card_mono)
   ultimately have "int (card (S\<^sub>1 - faulty)) \<ge> int (card S\<^sub>1) - int (f - 1)"
-    by (simp add: card_Diff_subset_Int card_mono of_nat_diff)
+    by (simp add: card_Diff_subset_Int card_mono)
   moreover have "int (card S\<^sub>1) \<ge> \<lceil>real n / 2\<rceil> + int f - 1"
     using assms(3) by linarith
   ultimately show ?thesis using f_pos by linarith
@@ -297,6 +297,47 @@ proof -
   thus ?thesis by blast
 qed
 
+lemma card_lemma_7:
+  assumes "broadcaster \<in> faulty"
+    and "broadcaster \<notin> S\<^sub>1"
+    and "card S\<^sub>1 \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
+    and "broadcaster \<notin> S\<^sub>2"
+    and "card S\<^sub>2 \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
+  shows "(S\<^sub>1 \<inter> S\<^sub>2) - faulty \<noteq> {}"
+  text \<open>Proof sketch: Since @{term "broadcaster"} is excluded from @{term S\<^sub>1} and @{term S\<^sub>2},
+    both sets lie in @{term "UNIV - {broadcaster}"}, whose cardinality is @{term "n - 1::nat"}.
+    Inclusion-exclusion and the lower bounds on @{term "card S\<^sub>1"} and @{term "card S\<^sub>2"}
+    yield @{term "card (S\<^sub>1 \<inter> S\<^sub>2) \<ge> f"}. Because @{term "broadcaster \<in> faulty"} but
+    @{term "broadcaster \<notin> S\<^sub>1 \<inter> S\<^sub>2"}, at most @{term "f - 1::nat"} faulty parties lie
+    in the intersection. Therefore @{term "(S\<^sub>1 \<inter> S\<^sub>2) - faulty"} is nonempty.\<close>
+proof -
+  have n_pos: "n \<ge> 1"
+    using fault_bound by (simp add: n_def)
+  have f_pos: "f \<ge> 1"
+    by (metis One_nat_def \<open>broadcaster \<in> faulty\<close> bot_nat_0.extremum_unique card.remove f_def finite nat.simps(3) not_less_eq_eq)
+  have card_U: "card (UNIV - {broadcaster} :: party set) = n - 1"
+    using n_pos by (simp add: n_def)
+  have union_bound: "card (S\<^sub>1 \<union> S\<^sub>2) \<le> n - 1"
+    by (metis Diff_empty Un_iff assms(2,4) card_U card_mono finite subset_Diff_insert top_greatest)
+  have ie: "card (S\<^sub>1 \<inter> S\<^sub>2) + (n - 1) \<ge> card S\<^sub>1 + card S\<^sub>2"
+    by (metis add.commute add_le_cancel_right card_Un_Int finite union_bound)
+  have sum_bound: "int (card S\<^sub>1) + int (card S\<^sub>2) \<ge> int n + int f - 1"
+  proof -
+    have "2 * \<lceil>real (n + f - 1) / 2\<rceil> \<ge> int n + int f - 1"
+      using le_of_int_ceiling[of "real (n + f - 1) / 2"] by linarith
+    thus ?thesis
+      using \<open>card S\<^sub>1 \<ge> \<lceil>real (n + f - 1) / 2\<rceil>\<close> \<open>card S\<^sub>2 \<ge> \<lceil>real (n + f - 1) / 2\<rceil>\<close>
+      by linarith
+  qed
+  have inter_card: "card (S\<^sub>1 \<inter> S\<^sub>2) \<ge> f"
+    using ie sum_bound n_pos by linarith
+  have faulty_inter: "card (faulty \<inter> (S\<^sub>1 \<inter> S\<^sub>2)) \<le> f - 1"
+    by (metis Int_iff Int_lower1 One_nat_def assms(1,2) card.infinite card.remove
+        card_Diff_singleton_if card_seteq dual_order.refl f_def f_pos not_less_eq_eq)
+  show ?thesis
+    by (metis Diff_eq_empty_iff Int_absorb1 diff_diff_cancel diff_is_0_eq diff_le_mono2 f_pos faulty_inter inter_card not_one_le_zero)
+qed
+
 section "Mapping to the abstract domain model"
 
 definition opt_quorum_member :: "opt_quorum => party => bool" where
@@ -315,15 +356,163 @@ definition commit_quorum_member :: "commit_quorum => party => bool" where
   "commit_quorum_member Q p \<equiv> p \<in> Rep_commit_quorum Q"
 
 interpretation axiomatic_abstract_domain_model:
-  abstract_domain_model faulty opt_quorum_member vote_quorum_member
+  abstract_domain_model broadcaster faulty opt_quorum_member vote_quorum_member
     quorum_member amplification_quorum_member commit_quorum_member
-  text \<open>Proof sketch: unfold the five membership definitions and use the representation theorems of
-    the typedefs to recover the concrete threshold facts for each quorum object. The global
-    domain-model interpretation above should then supply the cardinality lemmas behind the
-    abstract obligations. The existential quorum-object obligations should be witnessed via
-    @{term "Abs_vote_quorum (Rep_opt_quorum opQ - faulty)"} and
-    @{term "Abs_amplification_quorum (Rep_commit_quorum coQ - faulty)"}. This interpretation is
-    left unproved for now.\<close>
-  sorry
+proof (standard)
+  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ\<^sub>1 p \<and> opt_quorum_member opQ\<^sub>2 p)" for opQ\<^sub>1 opQ\<^sub>2
+  text \<open>Proof sketch: Apply @{thm [source] card_lemma_3} to the representing sets @{term "Rep_opt_quorum opQ\<^sub>1"} and @{term "Rep_opt_quorum opQ\<^sub>2"}. Any witness in their nonfaulty intersection immediately yields the required quorum members.\<close>
+  proof
+    assume broadcaster_faulty: "broadcaster \<in> faulty"
+    have opQ1_props:
+      "broadcaster \<notin> Rep_opt_quorum opQ\<^sub>1"
+      "card (Rep_opt_quorum opQ\<^sub>1) \<ge> \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
+      using Rep_opt_quorum[of opQ\<^sub>1] by auto
+    have opQ2_props:
+      "broadcaster \<notin> Rep_opt_quorum opQ\<^sub>2"
+      "card (Rep_opt_quorum opQ\<^sub>2) \<ge> \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
+      using Rep_opt_quorum[of opQ\<^sub>2] by auto
+    from card_lemma_3[OF broadcaster_faulty opQ1_props(1) opQ1_props(2) opQ2_props(1) opQ2_props(2)]
+    obtain p where "p \<in> (Rep_opt_quorum opQ\<^sub>1 \<inter> Rep_opt_quorum opQ\<^sub>2) - faulty"
+      by blast
+    then show "\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ\<^sub>1 p \<and> opt_quorum_member opQ\<^sub>2 p"
+      unfolding opt_quorum_member_def by blast
+  qed
 
+  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> vote_quorum_member vtQ p)" for opQ vtQ
+  text \<open>Proof sketch: Apply @{thm [source] card_lemma_1} to @{term "Rep_opt_quorum opQ"} and @{term "Rep_vote_quorum vtQ"}. A witness in the nonfaulty intersection satisfies both membership predicates after unfolding their definitions.\<close>
+  proof
+    assume broadcaster_faulty: "broadcaster \<in> faulty"
+    have opQ_props:
+      "broadcaster \<notin> Rep_opt_quorum opQ"
+      "card (Rep_opt_quorum opQ) \<ge> \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
+      using Rep_opt_quorum[of opQ] by auto
+    have vtQ_props:
+      "broadcaster \<notin> Rep_vote_quorum vtQ"
+      "card (Rep_vote_quorum vtQ) \<ge> \<lceil>real n / 2\<rceil>"
+      using Rep_vote_quorum[of vtQ] by auto
+    from card_lemma_1[OF broadcaster_faulty opQ_props(1) opQ_props(2) vtQ_props(1) vtQ_props(2)]
+    obtain p where "p \<in> (Rep_opt_quorum opQ \<inter> Rep_vote_quorum vtQ) - faulty"
+      by blast
+    then show "\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> vote_quorum_member vtQ p"
+      unfolding opt_quorum_member_def vote_quorum_member_def by blast
+  qed
+
+  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> quorum_member quQ p)" for opQ quQ
+  text \<open>Proof sketch: Use @{thm [source] card_lemma_2} on @{term "Rep_opt_quorum opQ"} and @{term "Rep_quorum quQ"}. The produced witness lies in both representing sets and outside @{term faulty}.\<close>
+  proof
+    assume broadcaster_faulty: "broadcaster \<in> faulty"
+    have opQ_props:
+      "broadcaster \<notin> Rep_opt_quorum opQ"
+      "card (Rep_opt_quorum opQ) \<ge> \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
+      using Rep_opt_quorum[of opQ] by auto
+    have quQ_props:
+      "broadcaster \<notin> Rep_quorum quQ"
+      "card (Rep_quorum quQ) \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
+      using Rep_quorum[of quQ] by auto
+    from card_lemma_2[OF broadcaster_faulty opQ_props(1) opQ_props(2) quQ_props(1) quQ_props(2)]
+    obtain p where "p \<in> (Rep_opt_quorum opQ \<inter> Rep_quorum quQ) - faulty"
+      by blast
+    then show "\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> quorum_member quQ p"
+      unfolding opt_quorum_member_def quorum_member_def by blast
+  qed
+
+  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> quorum_member quQ\<^sub>1 p \<and> quorum_member quQ\<^sub>2 p)" for quQ\<^sub>1 quQ\<^sub>2
+  text \<open>Proof sketch: Apply inclusion exclusion to @{term "Rep_quorum quQ\<^sub>1"} and @{term "Rep_quorum quQ\<^sub>2"} inside @{term "UNIV - {broadcaster}"}. Their thresholds force an intersection of size at least @{term f}, and at most @{term "f - 1"} of those parties can be faulty because @{term broadcaster} is faulty but excluded.\<close>
+  proof
+    assume broadcaster_faulty: "broadcaster \<in> faulty"
+    have quQ1_props:
+      "broadcaster \<notin> Rep_quorum quQ\<^sub>1"
+      "card (Rep_quorum quQ\<^sub>1) \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
+      using Rep_quorum[of quQ\<^sub>1] by auto
+    have quQ2_props:
+      "broadcaster \<notin> Rep_quorum quQ\<^sub>2"
+      "card (Rep_quorum quQ\<^sub>2) \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
+      using Rep_quorum[of quQ\<^sub>2] by auto
+    have n_pos: "n \<ge> 1"
+      using fault_bound by (simp add: n_def)
+    have f_pos: "f \<ge> 1"
+      by (metis One_nat_def broadcaster_faulty bot_nat_0.extremum_unique card.remove f_def finite nat.simps(3) not_less_eq_eq)
+    have card_U: "card (UNIV - {broadcaster} :: party set) = n - 1"
+      using n_pos by (simp add: n_def)
+    have ie:
+      "card (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) + (n - 1) \<ge> card (Rep_quorum quQ\<^sub>1) + card (Rep_quorum quQ\<^sub>2)"
+      by (metis Diff_empty Un_iff add.commute add_le_cancel_right card_U card_Un_Int card_mono finite quQ1_props(1) quQ2_props(1) subset_Diff_insert subset_UNIV)
+    have quQ1_bound: "int (card (Rep_quorum quQ\<^sub>1)) \<ge> real (n + f - 1) / 2"
+      using quQ1_props(2) le_of_int_ceiling[of "real (n + f - 1) / 2"] by linarith
+    have quQ2_bound: "int (card (Rep_quorum quQ\<^sub>2)) \<ge> real (n + f - 1) / 2"
+      using quQ2_props(2) le_of_int_ceiling[of "real (n + f - 1) / 2"] by linarith
+    have sum_bound: "int (card (Rep_quorum quQ\<^sub>1)) + int (card (Rep_quorum quQ\<^sub>2)) \<ge> int n + int f - 1"
+      using quQ1_bound quQ2_bound by linarith
+    have inter_card: "int (card (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2)) \<ge> int f"
+      using ie sum_bound n_pos by linarith
+    have faulty_inter: "card (faulty \<inter> (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2)) \<le> f - 1"
+      by (metis Int_iff Int_lower1 One_nat_def broadcaster_faulty card.remove card_Diff_singleton_if card_seteq f_def finite quQ1_props(1) not_less_eq_eq)
+    have inter_minus_faulty_card:
+      "card ((Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty) \<ge> 1"
+      by (metis Diff_Diff_Int Diff_empty Int_lower2 One_nat_def card.empty card_seteq dec_greater_eq_self_imp_bot empty_subsetI f_def f_pos faulty_inter finite inter_card not_less_eq_eq of_nat_le_iff)
+    have inter_minus_faulty_nonempty:
+      "(Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty \<noteq> {}"
+    proof
+      assume eq_empty: "(Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty = {}"
+      from inter_minus_faulty_card eq_empty show False by simp
+    qed
+    from inter_minus_faulty_nonempty obtain p where "p \<in> (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty"
+      by blast
+    then show "\<exists>p. p \<notin> faulty \<and> quorum_member quQ\<^sub>1 p \<and> quorum_member quQ\<^sub>2 p"
+      unfolding quorum_member_def by blast
+  qed
+
+  show "\<exists>p. p \<notin> faulty \<and> vote_quorum_member vtQ p" for vtQ
+  text \<open>Proof sketch: @{thm [source] card_lemma_6} applies directly to @{term "Rep_vote_quorum vtQ"}, whose cardinality is part of the typedef invariant.\<close>
+    using Rep_vote_quorum card_lemma_6 vote_quorum_member_def by fastforce
+
+  show "\<exists>p. p \<notin> faulty \<and> amplification_quorum_member amQ p" for amQ
+  text \<open>Proof sketch: @{term "Rep_amplification_quorum amQ"} has at least @{term "f + 1"} elements, while @{term faulty} has exactly @{term f}. Therefore the representing set cannot be contained in @{term faulty}.\<close>
+  proof -
+    have amQ_props: "card (Rep_amplification_quorum amQ) \<ge> f + 1"
+      using Rep_amplification_quorum[of amQ] by auto
+    have "card faulty < card (Rep_amplification_quorum amQ)"
+      using amQ_props by (simp add: f_def)
+    then have "\<not> Rep_amplification_quorum amQ \<subseteq> faulty"
+      by (metis card_mono finite leD)
+    then obtain p where "p \<in> Rep_amplification_quorum amQ" and "p \<notin> faulty"
+      by blast
+    then show ?thesis
+      unfolding amplification_quorum_member_def by blast
+  qed
+
+  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>vtQ. \<forall>p. vote_quorum_member vtQ p \<longrightarrow> p \<notin> faulty \<and> opt_quorum_member opQ p)" for opQ
+  text \<open>Proof sketch: @{thm [source] card_lemma_5} shows that @{term "Rep_opt_quorum opQ - faulty"} still meets the vote threshold. Build a vote quorum from that set, so every one of its members is both nonfaulty and already in the optimistic quorum.\<close>
+  proof
+    assume broadcaster_faulty: "broadcaster \<in> faulty"
+    let ?S = "Rep_opt_quorum opQ - faulty"
+    have opQ_props:
+      "broadcaster \<notin> Rep_opt_quorum opQ"
+      "card (Rep_opt_quorum opQ) \<ge> \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
+      using Rep_opt_quorum[of opQ] by auto
+    have vote_carrier: "?S \<in> {S :: party set. broadcaster \<notin> S \<and> card S \<ge> \<lceil>real n / 2\<rceil>}"
+      using opQ_props card_lemma_5[OF broadcaster_faulty opQ_props(1) opQ_props(2)]
+      by auto
+    let ?vtQ = "Abs_vote_quorum ?S"
+    have rep_vtQ: "Rep_vote_quorum ?vtQ = ?S"
+      using vote_carrier by (simp add: Abs_vote_quorum_inverse)
+    show "\<exists>vtQ. \<forall>p. vote_quorum_member vtQ p \<longrightarrow> p \<notin> faulty \<and> opt_quorum_member opQ p"
+      using opt_quorum_member_def rep_vtQ vote_quorum_member_def by auto
+  qed
+
+  show "\<exists>amQ. \<forall>p. amplification_quorum_member amQ p \<longrightarrow> p \<notin> faulty \<and> commit_quorum_member coQ p" for coQ
+  text \<open>Proof sketch: @{thm [source] card_lemma_4} guarantees that @{term "Rep_commit_quorum coQ - faulty"} still has the amplification threshold. Use that set as the representing set of a witness amplification quorum.\<close>
+  proof -
+    let ?S = "Rep_commit_quorum coQ - faulty"
+    have coQ_props: "card (Rep_commit_quorum coQ) \<ge> 2 * f + 1"
+      using Rep_commit_quorum[of coQ] by auto
+    have am_carrier: "?S \<in> {S :: party set. card S \<ge> f + 1}"
+      using card_lemma_4[OF coQ_props] by simp
+    let ?amQ = "Abs_amplification_quorum ?S"
+    have rep_amQ: "Rep_amplification_quorum ?amQ = ?S"
+      using am_carrier by (simp add: Abs_amplification_quorum_inverse)
+    show "\<exists>amQ. \<forall>p. amplification_quorum_member amQ p \<longrightarrow> p \<notin> faulty \<and> commit_quorum_member coQ p"
+      using amplification_quorum_member_def commit_quorum_member_def rep_amQ by auto
+  qed
+qed
 end
