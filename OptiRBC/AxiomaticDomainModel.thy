@@ -417,47 +417,12 @@ proof (standard)
   qed
 
   show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> quorum_member quQ\<^sub>1 p \<and> quorum_member quQ\<^sub>2 p)" for quQ\<^sub>1 quQ\<^sub>2
-  text \<open>Proof sketch: Apply inclusion exclusion to @{term "Rep_quorum quQ\<^sub>1"} and @{term "Rep_quorum quQ\<^sub>2"} inside @{term "UNIV - {broadcaster}"}. Their thresholds force an intersection of size at least @{term f}, and at most @{term "f - 1"} of those parties can be faulty because @{term broadcaster} is faulty but excluded.\<close>
+  text \<open>Proof sketch: Use @{thm [source] card_lemma_7} on @{term "Rep_quorum quQ\<^sub>1"} and @{term "Rep_quorum quQ\<^sub>2"}. The lemma yields a party in both representing sets and outside @{term faulty}, which is exactly the desired witness.\<close>
   proof
     assume broadcaster_faulty: "broadcaster \<in> faulty"
-    have quQ1_props:
-      "broadcaster \<notin> Rep_quorum quQ\<^sub>1"
-      "card (Rep_quorum quQ\<^sub>1) \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
-      using Rep_quorum[of quQ\<^sub>1] by auto
-    have quQ2_props:
-      "broadcaster \<notin> Rep_quorum quQ\<^sub>2"
-      "card (Rep_quorum quQ\<^sub>2) \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
-      using Rep_quorum[of quQ\<^sub>2] by auto
-    have n_pos: "n \<ge> 1"
-      using fault_bound by (simp add: n_def)
-    have f_pos: "f \<ge> 1"
-      by (metis One_nat_def broadcaster_faulty bot_nat_0.extremum_unique card.remove f_def finite nat.simps(3) not_less_eq_eq)
-    have card_U: "card (UNIV - {broadcaster} :: party set) = n - 1"
-      using n_pos by (simp add: n_def)
-    have ie:
-      "card (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) + (n - 1) \<ge> card (Rep_quorum quQ\<^sub>1) + card (Rep_quorum quQ\<^sub>2)"
-      by (metis Diff_empty Un_iff add.commute add_le_cancel_right card_U card_Un_Int card_mono finite quQ1_props(1) quQ2_props(1) subset_Diff_insert subset_UNIV)
-    have quQ1_bound: "int (card (Rep_quorum quQ\<^sub>1)) \<ge> real (n + f - 1) / 2"
-      using quQ1_props(2) le_of_int_ceiling[of "real (n + f - 1) / 2"] by linarith
-    have quQ2_bound: "int (card (Rep_quorum quQ\<^sub>2)) \<ge> real (n + f - 1) / 2"
-      using quQ2_props(2) le_of_int_ceiling[of "real (n + f - 1) / 2"] by linarith
-    have sum_bound: "int (card (Rep_quorum quQ\<^sub>1)) + int (card (Rep_quorum quQ\<^sub>2)) \<ge> int n + int f - 1"
-      using quQ1_bound quQ2_bound by linarith
-    have inter_card: "int (card (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2)) \<ge> int f"
-      using ie sum_bound n_pos by linarith
-    have faulty_inter: "card (faulty \<inter> (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2)) \<le> f - 1"
-      by (metis Int_iff Int_lower1 One_nat_def broadcaster_faulty card.remove card_Diff_singleton_if card_seteq f_def finite quQ1_props(1) not_less_eq_eq)
-    have inter_minus_faulty_card:
-      "card ((Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty) \<ge> 1"
-      by (metis Diff_Diff_Int Diff_empty Int_lower2 One_nat_def card.empty card_seteq dec_greater_eq_self_imp_bot empty_subsetI f_def f_pos faulty_inter finite inter_card not_less_eq_eq of_nat_le_iff)
-    have inter_minus_faulty_nonempty:
-      "(Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty \<noteq> {}"
-    proof
-      assume eq_empty: "(Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty = {}"
-      from inter_minus_faulty_card eq_empty show False by simp
-    qed
-    from inter_minus_faulty_nonempty obtain p where "p \<in> (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty"
-      by blast
+    from card_lemma_7[OF broadcaster_faulty]
+    obtain p where "p \<in> (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty"
+      using Rep_quorum[of quQ\<^sub>1] Rep_quorum[of quQ\<^sub>2] by auto
     then show "\<exists>p. p \<notin> faulty \<and> quorum_member quQ\<^sub>1 p \<and> quorum_member quQ\<^sub>2 p"
       unfolding quorum_member_def by blast
   qed
