@@ -146,12 +146,9 @@ method try1 =
    (metis | force | (smt (verit)))
 
 definition inv1 where
-  \<comment> \<open>If @{term broadcaster} is faulty and a non-faulty party commits @{term v}, then either
-  there is an amplification quorum of non-faulty parties ready for @{term v}, or there is
-  a vote quorum of non-faulty parties that echoed @{term v}.\<close>
-  "inv1 c \<equiv> \<forall> p v . broadcaster \<in> faulty \<and> p \<notin> faulty \<and> (c\<cdot>committed) p v \<longrightarrow>
+  "inv1 c \<equiv> \<forall> p v . p \<notin> faulty \<and> (c\<cdot>committed) p v \<longrightarrow>
     (\<exists>Q. \<forall>q. amplification_quorum_member Q q \<longrightarrow> q \<notin> faulty \<and> (c\<cdot>ready) q v)
-    \<or> (\<exists>Q. \<forall>q. vote_quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>echo) q v)"
+    \<or> (\<exists>Q. \<forall>q. opt_quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>echo) q v)"
 
 
 lemma inv1_inductive:
@@ -163,10 +160,7 @@ lemma inv1_inductive:
   done
 
 definition inv2 where
-  "inv2 c \<equiv> \<forall> p v . broadcaster \<in> faulty \<and> p \<notin> faulty \<and> (c\<cdot>committed) p v \<longrightarrow>
-    ((\<exists>Q. \<forall>q. quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>ack) q v)
-    \<and> (\<exists>Q. \<forall>q. amplification_quorum_member Q q \<longrightarrow> q \<notin> faulty \<and> (c\<cdot>ready) q v))
-    \<or> (\<exists>Q. \<forall>q. vote_quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>echo) q v)"
+  "inv2 c \<equiv> \<forall> p v . p \<notin> faulty \<and> (c\<cdot>ready) p v \<longrightarrow> (\<exists>Q. \<forall>q. quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>ack) q v)"
 
 lemma inv2_inductive:
   "inductive_invariant inv2"
@@ -176,6 +170,30 @@ lemma inv2_inductive:
               apply try1+
   done
 
+definition inv3 where
+  "inv3 c \<equiv> \<forall> v . (\<exists>Q. \<forall>q. quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>ack) q v) \<longrightarrow> (
+    (\<exists>Q. \<forall>q. quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>echo) q v)
+    \<or> (\<exists>Q. \<forall>q. quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>vote) q v))"
+
+lemma inv3_inductive:
+  "inductive_invariant inv3"
+  apply (unfold inductive_invariant_def; rule conjI; (unfold step_def)?) \<comment> \<open>First obtain one goal per step case (and init)\<close>
+   apply (simp add:inv3_def init_def) \<comment> \<open>Discharge init\<close>
+  apply (auto elim: step_cases; auto simp add:protocol_defs inv3_def; insert abstract_domain_model_axioms; unfold abstract_domain_model_def) \<comment> \<open>Do cases analysis on the step\<close>
+        apply try1+
+  done
+
+definition inv4 where
+  "inv4 c \<equiv> \<forall> v . (\<exists>Q. \<forall>q. quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>vote) q v) \<longrightarrow> 
+    (\<exists>Q. \<forall>q. vote_quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>vote) q v)"
+
+lemma inv4_inductive:
+  "inductive_invariant inv4"
+  apply (unfold inductive_invariant_def; rule conjI; (unfold step_def)?) \<comment> \<open>First obtain one goal per step case (and init)\<close>
+   apply (simp add:init_def inv4_def) \<comment> \<open>Discharge init\<close>
+  apply (auto elim: step_cases; auto simp add:protocol_defs inv4_def; insert abstract_domain_model_axioms; unfold abstract_domain_model_def) \<comment> \<open>Do cases analysis on the step\<close>
+        apply try1+
+  done
 end
 
 end
