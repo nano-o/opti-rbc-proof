@@ -21,7 +21,7 @@ locale abs_protocol =
     project_HOL_bool_'v_fun_'p_fun inject_HOL_bool_'v_fun_'p_fun
     project_HOL_bool_'v_fun inject_HOL_bool_'v_fun +
   abstract_domain_model broadcaster faulty
-    opt_quorum_member vote_quorum_member quorum_member
+    opt_quorum_member maj_quorum_member quorum_member
     amplification_quorum_member commit_quorum_member
   for project_HOL_bool_'v_fun_'p_fun :: "'b \<Rightarrow> 'p::finite \<Rightarrow> 'v \<Rightarrow> bool"
     and inject_HOL_bool_'v_fun_'p_fun :: "('p \<Rightarrow> 'v \<Rightarrow> bool) \<Rightarrow> 'b"
@@ -30,7 +30,7 @@ locale abs_protocol =
     and broadcaster :: "'p"
     and faulty :: "'p set"
     and opt_quorum_member :: "'opQ \<Rightarrow> 'p \<Rightarrow> bool"
-    and vote_quorum_member :: "'vtQ \<Rightarrow> 'p \<Rightarrow> bool"
+    and maj_quorum_member :: "'vtQ \<Rightarrow> 'p \<Rightarrow> bool"
     and quorum_member :: "'quQ \<Rightarrow> 'p \<Rightarrow> bool"
     and amplification_quorum_member :: "'amQ \<Rightarrow> 'p \<Rightarrow> bool"
     and commit_quorum_member :: "'coQ \<Rightarrow> 'p \<Rightarrow> bool"
@@ -55,22 +55,22 @@ definition vote_step where
   "vote_step c c' p v \<equiv>
      p \<noteq> broadcaster
      \<and> (\<forall>v'. \<not> (c\<cdot>vote) p v')
-     \<and> (\<exists>Q::'vtQ. \<forall>q. vote_quorum_member Q q \<longrightarrow> q \<noteq> broadcaster \<and> (c\<cdot>echo) q v)
+     \<and> (\<exists>Q::'vtQ. \<forall>q. maj_quorum_member Q q \<longrightarrow> (c\<cdot>echo) q v)
      \<and> c' = c<vote := (c\<cdot>vote)(p := ((c\<cdot>vote) p)(v := True))>"
 
 definition ack_step where
   "ack_step c c' p v \<equiv>
      p \<noteq> broadcaster
      \<and> (\<forall>v'. \<not> (c\<cdot>ack) p v')
-     \<and> ((\<exists>Q::'quQ. \<forall>q. quorum_member Q q \<longrightarrow> q \<noteq> broadcaster \<and> (c\<cdot>vote) q v)
-        \<or> (\<exists>Q::'quQ. \<forall>q. quorum_member Q q \<longrightarrow> q \<noteq> broadcaster \<and> (c\<cdot>echo) q v))
+     \<and> ((\<exists>Q::'quQ. \<forall>q. quorum_member Q q \<longrightarrow> (c\<cdot>vote) q v)
+        \<or> (\<exists>Q::'quQ. \<forall>q. quorum_member Q q \<longrightarrow> (c\<cdot>echo) q v))
      \<and> c' = c<ack := (c\<cdot>ack)(p := ((c\<cdot>ack) p)(v := True))>"
 
 definition ready_step where
   "ready_step c c' p v \<equiv>
      p \<noteq> broadcaster
      \<and> (\<forall>v'. \<not> (c\<cdot>ready) p v')
-     \<and> ((\<exists>Q::'quQ. \<forall>q. quorum_member Q q \<longrightarrow> q \<noteq> broadcaster \<and> (c\<cdot>ack) q v)
+     \<and> ((\<exists>Q::'quQ. \<forall>q. quorum_member Q q \<longrightarrow> (c\<cdot>ack) q v)
         \<or> (\<exists>Q::'amQ. \<forall>q. amplification_quorum_member Q q \<longrightarrow> (c\<cdot>ready) q v))
      \<and> c' = c<ready := (c\<cdot>ready)(p := ((c\<cdot>ready) p)(v := True))>"
 
@@ -78,7 +78,7 @@ definition opt_commit_step where
   "opt_commit_step c c' p v \<equiv>
      p \<noteq> broadcaster
      \<and> (\<forall>v'. \<not> (c\<cdot>committed) p v')
-     \<and> (\<exists>Q::'opQ. \<forall>q. opt_quorum_member Q q \<longrightarrow> q \<noteq> broadcaster \<and> (c\<cdot>echo) q v)
+     \<and> (\<exists>Q::'opQ. \<forall>q. opt_quorum_member Q q \<longrightarrow> (c\<cdot>echo) q v)
      \<and> c' = c<committed := (c\<cdot>committed)(p := ((c\<cdot>committed) p)(v := True))>"
 
 definition commit_step where
@@ -184,16 +184,31 @@ lemma inv3_inductive:
   done
 
 definition inv4 where
-  "inv4 c \<equiv> \<forall> v . (\<exists>Q. \<forall>q. quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>vote) q v) \<longrightarrow> 
-    (\<exists>Q. \<forall>q. vote_quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>vote) q v)"
+  "inv4 c \<equiv> \<forall> v . (\<exists>q . q \<notin> faulty \<and> (c\<cdot>vote) q v) \<longrightarrow> 
+    (\<exists>Q. \<forall>q. maj_quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>echo) q v)"
 
 lemma inv4_inductive:
   "inductive_invariant inv4"
   apply (unfold inductive_invariant_def; rule conjI; (unfold step_def)?) \<comment> \<open>First obtain one goal per step case (and init)\<close>
-   apply (simp add:init_def inv4_def) \<comment> \<open>Discharge init\<close>
+   apply (insert abstract_domain_model_axioms; unfold abstract_domain_model_def; simp add:init_def inv4_def; try1) \<comment> \<open>Discharge init\<close>
   apply (auto elim: step_cases; auto simp add:protocol_defs inv4_def; insert abstract_domain_model_axioms; unfold abstract_domain_model_def) \<comment> \<open>Do cases analysis on the step\<close>
         apply try1+
   done
+
+lemma l:
+  "broadcaster \<in> faulty
+    \<and> (\<exists>Q. \<forall>q. maj_quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> (c\<cdot>echo) q v)
+    \<and> (\<exists>Q. \<forall>q. opt_quorum_member Q q \<and> q \<notin> faulty \<longrightarrow> \<not> (c\<cdot>echo) q v)
+    \<longrightarrow> False"
+proof -
+  text \<open>Proof sketch: Use @{thm [source] "opt_maj_quorum_intersection"} to obtain a nonfaulty
+    party shared by the majority quorum and the optimistic quorum. The two quorum
+    premises then force contradictory echo facts for that witness.\<close>
+  show ?thesis
+    using opt_maj_quorum_intersection by blast
+qed
+
+
 end
 
 end

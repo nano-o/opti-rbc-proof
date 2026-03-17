@@ -56,7 +56,7 @@ proof -
     using thresh by (intro exI[of _ ?S]) simp
 qed
 
-typedef vote_quorum =
+typedef maj_quorum =
   "{S :: party set. broadcaster \<notin> S \<and> card S >= \<lceil>real n / 2\<rceil>}"
 proof -
   text \<open>Proof sketch: @{term "UNIV - {broadcaster}"} again provides all non-broadcaster parties.
@@ -80,7 +80,7 @@ proof -
     using thresh by (intro exI[of _ ?S]) simp
 qed
 
-typedef quorum =
+typedef classic_quorum =
   "{S :: party set. broadcaster \<notin> S \<and> card S >= \<lceil>real (n + f - 1) / 2\<rceil>}"
 proof -
   text \<open>Proof sketch: use @{term "UNIV - {broadcaster}"} once more. The global inequalities
@@ -343,11 +343,11 @@ section "Mapping to the abstract domain model"
 definition opt_quorum_member :: "opt_quorum => party => bool" where
   "opt_quorum_member Q p \<equiv> p \<in> Rep_opt_quorum Q"
 
-definition vote_quorum_member :: "vote_quorum => party => bool" where
-  "vote_quorum_member Q p \<equiv> p \<in> Rep_vote_quorum Q"
+definition maj_quorum_member :: "maj_quorum => party => bool" where
+  "maj_quorum_member Q p \<equiv> p \<in> Rep_maj_quorum Q"
 
-definition quorum_member :: "quorum => party => bool" where
-  "quorum_member Q p \<equiv> p \<in> Rep_quorum Q"
+definition classic_quorum_member :: "classic_quorum => party => bool" where
+  "classic_quorum_member Q p \<equiv> p \<in> Rep_classic_quorum Q"
 
 definition amplification_quorum_member :: "amplification_quorum => party => bool" where
   "amplification_quorum_member Q p \<equiv> p \<in> Rep_amplification_quorum Q"
@@ -356,8 +356,8 @@ definition commit_quorum_member :: "commit_quorum => party => bool" where
   "commit_quorum_member Q p \<equiv> p \<in> Rep_commit_quorum Q"
 
 interpretation axiomatic_abstract_domain_model:
-  abstract_domain_model broadcaster faulty opt_quorum_member vote_quorum_member
-    quorum_member amplification_quorum_member commit_quorum_member
+  abstract_domain_model broadcaster faulty opt_quorum_member maj_quorum_member
+    classic_quorum_member amplification_quorum_member commit_quorum_member
 proof (standard)
   show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ\<^sub>1 p \<and> opt_quorum_member opQ\<^sub>2 p)" for opQ\<^sub>1 opQ\<^sub>2
   text \<open>Proof sketch: Apply @{thm [source] card_lemma_3} to the representing sets @{term "Rep_opt_quorum opQ\<^sub>1"} and @{term "Rep_opt_quorum opQ\<^sub>2"}. Any witness in their nonfaulty intersection immediately yields the required quorum members.\<close>
@@ -378,8 +378,8 @@ proof (standard)
       unfolding opt_quorum_member_def by blast
   qed
 
-  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> vote_quorum_member vtQ p)" for opQ vtQ
-  text \<open>Proof sketch: Apply @{thm [source] card_lemma_1} to @{term "Rep_opt_quorum opQ"} and @{term "Rep_vote_quorum vtQ"}. A witness in the nonfaulty intersection satisfies both membership predicates after unfolding their definitions.\<close>
+  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> maj_quorum_member vtQ p)" for opQ vtQ
+  text \<open>Proof sketch: Apply @{thm [source] card_lemma_1} to @{term "Rep_opt_quorum opQ"} and @{term "Rep_maj_quorum vtQ"}. A witness in the nonfaulty intersection satisfies both membership predicates after unfolding their definitions.\<close>
   proof
     assume broadcaster_faulty: "broadcaster \<in> faulty"
     have opQ_props:
@@ -387,18 +387,18 @@ proof (standard)
       "card (Rep_opt_quorum opQ) \<ge> \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
       using Rep_opt_quorum[of opQ] by auto
     have vtQ_props:
-      "broadcaster \<notin> Rep_vote_quorum vtQ"
-      "card (Rep_vote_quorum vtQ) \<ge> \<lceil>real n / 2\<rceil>"
-      using Rep_vote_quorum[of vtQ] by auto
+      "broadcaster \<notin> Rep_maj_quorum vtQ"
+      "card (Rep_maj_quorum vtQ) \<ge> \<lceil>real n / 2\<rceil>"
+      using Rep_maj_quorum[of vtQ] by auto
     from card_lemma_1[OF broadcaster_faulty opQ_props(1) opQ_props(2) vtQ_props(1) vtQ_props(2)]
-    obtain p where "p \<in> (Rep_opt_quorum opQ \<inter> Rep_vote_quorum vtQ) - faulty"
+    obtain p where "p \<in> (Rep_opt_quorum opQ \<inter> Rep_maj_quorum vtQ) - faulty"
       by blast
-    then show "\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> vote_quorum_member vtQ p"
-      unfolding opt_quorum_member_def vote_quorum_member_def by blast
+    then show "\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> maj_quorum_member vtQ p"
+      unfolding opt_quorum_member_def maj_quorum_member_def by blast
   qed
 
-  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> quorum_member quQ p)" for opQ quQ
-  text \<open>Proof sketch: Use @{thm [source] card_lemma_2} on @{term "Rep_opt_quorum opQ"} and @{term "Rep_quorum quQ"}. The produced witness lies in both representing sets and outside @{term faulty}.\<close>
+  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> classic_quorum_member quQ p)" for opQ quQ
+  text \<open>Proof sketch: Use @{thm [source] card_lemma_2} on @{term "Rep_opt_quorum opQ"} and @{term "Rep_classic_quorum quQ"}. The produced witness lies in both representing sets and outside @{term faulty}.\<close>
   proof
     assume broadcaster_faulty: "broadcaster \<in> faulty"
     have opQ_props:
@@ -406,30 +406,30 @@ proof (standard)
       "card (Rep_opt_quorum opQ) \<ge> \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
       using Rep_opt_quorum[of opQ] by auto
     have quQ_props:
-      "broadcaster \<notin> Rep_quorum quQ"
-      "card (Rep_quorum quQ) \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
-      using Rep_quorum[of quQ] by auto
+      "broadcaster \<notin> Rep_classic_quorum quQ"
+      "card (Rep_classic_quorum quQ) \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
+      using Rep_classic_quorum[of quQ] by auto
     from card_lemma_2[OF broadcaster_faulty opQ_props(1) opQ_props(2) quQ_props(1) quQ_props(2)]
-    obtain p where "p \<in> (Rep_opt_quorum opQ \<inter> Rep_quorum quQ) - faulty"
+    obtain p where "p \<in> (Rep_opt_quorum opQ \<inter> Rep_classic_quorum quQ) - faulty"
       by blast
-    then show "\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> quorum_member quQ p"
-      unfolding opt_quorum_member_def quorum_member_def by blast
+    then show "\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> classic_quorum_member quQ p"
+      unfolding opt_quorum_member_def classic_quorum_member_def by blast
   qed
 
-  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> quorum_member quQ\<^sub>1 p \<and> quorum_member quQ\<^sub>2 p)" for quQ\<^sub>1 quQ\<^sub>2
-  text \<open>Proof sketch: Use @{thm [source] card_lemma_7} on @{term "Rep_quorum quQ\<^sub>1"} and @{term "Rep_quorum quQ\<^sub>2"}. The lemma yields a party in both representing sets and outside @{term faulty}, which is exactly the desired witness.\<close>
+  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> classic_quorum_member quQ\<^sub>1 p \<and> classic_quorum_member quQ\<^sub>2 p)" for quQ\<^sub>1 quQ\<^sub>2
+  text \<open>Proof sketch: Use @{thm [source] card_lemma_7} on @{term "Rep_classic_quorum quQ\<^sub>1"} and @{term "Rep_classic_quorum quQ\<^sub>2"}. The lemma yields a party in both representing sets and outside @{term faulty}, which is exactly the desired witness.\<close>
   proof
     assume broadcaster_faulty: "broadcaster \<in> faulty"
     from card_lemma_7[OF broadcaster_faulty]
-    obtain p where "p \<in> (Rep_quorum quQ\<^sub>1 \<inter> Rep_quorum quQ\<^sub>2) - faulty"
-      using Rep_quorum[of quQ\<^sub>1] Rep_quorum[of quQ\<^sub>2] by auto
-    then show "\<exists>p. p \<notin> faulty \<and> quorum_member quQ\<^sub>1 p \<and> quorum_member quQ\<^sub>2 p"
-      unfolding quorum_member_def by blast
+    obtain p where "p \<in> (Rep_classic_quorum quQ\<^sub>1 \<inter> Rep_classic_quorum quQ\<^sub>2) - faulty"
+      using Rep_classic_quorum[of quQ\<^sub>1] Rep_classic_quorum[of quQ\<^sub>2] by auto
+    then show "\<exists>p. p \<notin> faulty \<and> classic_quorum_member quQ\<^sub>1 p \<and> classic_quorum_member quQ\<^sub>2 p"
+      unfolding classic_quorum_member_def by blast
   qed
 
-  show "\<exists>p. p \<notin> faulty \<and> vote_quorum_member vtQ p" for vtQ
-  text \<open>Proof sketch: @{thm [source] card_lemma_6} applies directly to @{term "Rep_vote_quorum vtQ"}, whose cardinality is part of the typedef invariant.\<close>
-    using Rep_vote_quorum card_lemma_6 vote_quorum_member_def by fastforce
+  show "\<exists>p. p \<notin> faulty \<and> maj_quorum_member vtQ p" for vtQ
+  text \<open>Proof sketch: @{thm [source] card_lemma_6} applies directly to @{term "Rep_maj_quorum vtQ"}, whose cardinality is part of the typedef invariant.\<close>
+    using Rep_maj_quorum card_lemma_6 maj_quorum_member_def by fastforce
 
   show "\<exists>p. p \<notin> faulty \<and> amplification_quorum_member amQ p" for amQ
   text \<open>Proof sketch: @{term "Rep_amplification_quorum amQ"} has at least @{term "f + 1"} elements, while @{term faulty} has exactly @{term f}. Therefore the representing set cannot be contained in @{term faulty}.\<close>
@@ -446,7 +446,7 @@ proof (standard)
       unfolding amplification_quorum_member_def by blast
   qed
 
-  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>vtQ. \<forall>p. vote_quorum_member vtQ p \<longrightarrow> p \<notin> faulty \<and> opt_quorum_member opQ p)" for opQ
+  show "broadcaster \<in> faulty \<longrightarrow> (\<exists>vtQ. \<forall>p. maj_quorum_member vtQ p \<longrightarrow> p \<notin> faulty \<and> opt_quorum_member opQ p)" for opQ
   text \<open>Proof sketch: @{thm [source] card_lemma_5} shows that @{term "Rep_opt_quorum opQ - faulty"} still meets the vote threshold. Build a vote quorum from that set, so every one of its members is both nonfaulty and already in the optimistic quorum.\<close>
   proof
     assume broadcaster_faulty: "broadcaster \<in> faulty"
@@ -458,11 +458,11 @@ proof (standard)
     have vote_carrier: "?S \<in> {S :: party set. broadcaster \<notin> S \<and> card S \<ge> \<lceil>real n / 2\<rceil>}"
       using opQ_props card_lemma_5[OF broadcaster_faulty opQ_props(1) opQ_props(2)]
       by auto
-    let ?vtQ = "Abs_vote_quorum ?S"
-    have rep_vtQ: "Rep_vote_quorum ?vtQ = ?S"
-      using vote_carrier by (simp add: Abs_vote_quorum_inverse)
-    show "\<exists>vtQ. \<forall>p. vote_quorum_member vtQ p \<longrightarrow> p \<notin> faulty \<and> opt_quorum_member opQ p"
-      using opt_quorum_member_def rep_vtQ vote_quorum_member_def by auto
+    let ?vtQ = "Abs_maj_quorum ?S"
+    have rep_vtQ: "Rep_maj_quorum ?vtQ = ?S"
+      using vote_carrier by (simp add: Abs_maj_quorum_inverse)
+    show "\<exists>vtQ. \<forall>p. maj_quorum_member vtQ p \<longrightarrow> p \<notin> faulty \<and> opt_quorum_member opQ p"
+      using opt_quorum_member_def rep_vtQ maj_quorum_member_def by auto
   qed
 
   show "\<exists>amQ. \<forall>p. amplification_quorum_member amQ p \<longrightarrow> p \<notin> faulty \<and> commit_quorum_member coQ p" for coQ
@@ -479,5 +479,10 @@ proof (standard)
     show "\<exists>amQ. \<forall>p. amplification_quorum_member amQ p \<longrightarrow> p \<notin> faulty \<and> commit_quorum_member coQ p"
       using amplification_quorum_member_def commit_quorum_member_def rep_amQ by auto
   qed
+
+  show "\<And> Q .\<exists>p. p \<notin> faulty \<and> classic_quorum_member Q p"
+    oops
+
 qed
+
 end
