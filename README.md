@@ -2,6 +2,11 @@
 
 See [Optimistic_RBC.pdf](./Optimistic_RBC.pdf) for a description of the protocol.
 
+We show 3 properties:
+- No two non-faulty parties disagree on the committed value (see invariant `agreement` in [opti_rbc.ivy](./opti_rbc.ivy))
+- If the broadcaster is non-faulty, then eventually all non-faulty parties commit its value (see action `check_validity` in [opti_rbc.ivy](./opti_rbc.ivy))
+- If a non-faulty party commits, then eventually all non-faulty parties commit (see action `check_totality` in [opti_rbc.ivy](./opti_rbc.ivy))
+
 The proof has two parts: an ivy proof based on an abstract model in [opti_rbc.ivy](./opti_rbc.ivy), and a separate proof in Isabelle/HOL that the abstract model is sound in [AxiomaticDomainModel](https://htmlpreview.github.io/?https://raw.githubusercontent.com/nano-o/opti-rbc-proof/main/OptiRBC/browser_info/AxiomaticDomainModel.html).
 
 ## Checking the Ivy proof
