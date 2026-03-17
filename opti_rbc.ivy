@@ -5,9 +5,8 @@
 # Optimistic Reliable Broadcast (OptiRBC)
 #
 # Liveness Strategy: the state-space is finite and non-faulty actions are
-# monotonic, so eventually no more non-faulty actions are enabled.  We show
-# that if p1 has committed pv and no more non-faulty actions are enabled, then
-# p2 must have committed pv as well.
+# monotonic, so eventually no more non-faulty actions are enabled.  At that point
+# we check all liveness conditions hold.
 #
 ################################################################################
 
