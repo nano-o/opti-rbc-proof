@@ -1,4 +1,4 @@
-# Safety and liveness proof of an optimistic broadcast algorithm
+# Safety and liveness proof of an optimistic reliable-broadcast algorithm
 
 See [Optimistic_RBC.pdf](./Optimistic_RBC.pdf) for a description of the protocol.
 
