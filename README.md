@@ -22,6 +22,14 @@ If it takes too long then just restart `ivy_check`; you might get luckier with t
 
 ## Checking the Isabelle proof
 
+You can browse the proof online:
+[AbstractDomainModel](https://htmlpreview.github.io/?https://raw.githubusercontent.com/nano-o/opti-rbc-proof/main/OptiRBC/browser_info/AbstractDomainModel.html) and
+[AxiomaticDomainModel](https://htmlpreview.github.io/?https://raw.githubusercontent.com/nano-o/opti-rbc-proof/main/OptiRBC/browser_info/AxiomaticDomainModel.html).
+
+To check the proof locally, install Isabelle and then open [AbstractDomainModel](OptiRBC/AbstractDomainModel.thy) and [AxiomaticDomainModel](OptiRBC/AxiomaticDomainModel.thy).
+AbstractDomainModel defines the abstract model and AxiomaticDomainModel show that the axiomatic model based on thresholds satisfies all the properties of the abstract model.
+Ignore other `.thy` files.
+
 ## Findings
 
 - Missing assumption: n >= 2 to prevent thresholds of 0
