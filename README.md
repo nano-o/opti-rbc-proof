@@ -2,7 +2,7 @@
 
 See [Optimistic_RBC.pdf](./Optimistic_RBC.pdf) for a description of the protocol.
 
-The proof has two parts: an ivy proof based on an abstract model in `opti_rbc.ivy`, and a separate proof in Isabelle/HOL that the abstract model is sound in `OptiRBC/AxiomaticDomainModel.thy`.
+The proof has two parts: an ivy proof based on an abstract model in [opti_rbc.ivy](./opti_rbc.ivy), and a separate proof in Isabelle/HOL that the abstract model is sound in [AxiomaticDomainModel](https://htmlpreview.github.io/?https://raw.githubusercontent.com/nano-o/opti-rbc-proof/main/OptiRBC/browser_info/AxiomaticDomainModel.html).
 
 ## Checking the Ivy proof
 
