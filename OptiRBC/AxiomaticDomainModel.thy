@@ -32,14 +32,22 @@ axiomatization where
   and two_parties: "2 \<le> n"
 
 typedef opt_quorum =
-  "{S :: party set. broadcaster \<notin> S \<and> card S >= \<lceil>real (n + 2 * f - 2) / 2\<rceil>}"
+  "{S :: party set. broadcaster \<notin> S \<and> card S >= max 1 \<lceil>real (n + 2 * f - 2) / 2\<rceil>}"
 proof -
   text \<open>Proof sketch: @{term "UNIV - {broadcaster}"} excludes @{term broadcaster} and has
-    cardinality @{term "n - 1"}. The global inequality @{term fault_bound} makes this large
-    enough for the optimistic threshold.\<close>
+    cardinality @{term "n - 1"}. The global inequalities @{thm [source] fault_bound} and
+    @{thm [source] two_parties} make this large enough for the optimistic threshold and ensure
+    that it is nonempty.\<close>
   let ?S = "UNIV - {broadcaster} :: party set"
   have card_S: "card ?S = n - 1"
     by (simp add: n_def)
+  have ge_one: "card ?S >= 1"
+  proof -
+    have "n - 1 >= 1"
+      using two_parties by linarith
+    then show ?thesis
+      by (simp add: card_S)
+  qed
   have thresh: "card ?S >= \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
   proof -
     have "real (n - 1) >= real (n + 2 * f - 2) / 2"
@@ -52,8 +60,8 @@ proof -
       by (simp add: card_S)
   qed
   show "\<exists>S :: party set.
-      S \<in> {S :: party set. broadcaster \<notin> S \<and> card S >= \<lceil>real (n + 2 * f - 2) / 2\<rceil>}"
-    using thresh by (intro exI[of _ ?S]) simp
+      S \<in> {S :: party set. broadcaster \<notin> S \<and> card S >= max 1 \<lceil>real (n + 2 * f - 2) / 2\<rceil>}"
+    using ge_one thresh by (intro exI[of _ ?S]) simp
 qed
 
 typedef maj_quorum =
@@ -359,6 +367,199 @@ interpretation axiomatic_abstract_domain_model:
   abstract_domain_model broadcaster faulty opt_quorum_member maj_quorum_member
     classic_quorum_member amplification_quorum_member commit_quorum_member
 proof (standard)
+  show "\<not> classic_quorum_member quQ broadcaster" for quQ
+    using Rep_classic_quorum[of quQ] unfolding classic_quorum_member_def by auto
+
+  show "\<not> maj_quorum_member vtQ broadcaster" for vtQ
+    using Rep_maj_quorum[of vtQ] unfolding maj_quorum_member_def by auto
+
+  show "\<not> opt_quorum_member opQ broadcaster" for opQ
+    using Rep_opt_quorum[of opQ] unfolding opt_quorum_member_def by auto
+
+  show "\<exists>coQ. \<forall>p. commit_quorum_member coQ p \<longrightarrow> p \<notin> faulty"
+  text \<open>Proof sketch: @{term "(UNIV :: party set) - faulty"} has cardinality @{term "n - f"},
+    and @{thm [source] fault_bound} implies @{term "n - f \<ge> 2 * f + 1"}. Using this set as
+    the carrier of a commit quorum yields a witness whose members are all nonfaulty.\<close>
+  proof -
+    let ?S = "(UNIV :: party set) - faulty"
+    have card_S: "card ?S = n - f"
+      by (simp add: n_def f_def Finite_Set.card_Diff_subset)
+    have co_carrier: "?S \<in> {S :: party set. card S \<ge> 2 * f + 1}"
+    proof
+      have "n - f \<ge> 2 * f + 1"
+        using fault_bound by linarith
+      with card_S show "card ?S \<ge> 2 * f + 1"
+        by simp
+    qed
+    let ?coQ = "Abs_commit_quorum ?S"
+    have rep_coQ: "Rep_commit_quorum ?coQ = ?S"
+      using co_carrier by (simp add: Abs_commit_quorum_inverse)
+    show ?thesis
+      using rep_coQ unfolding commit_quorum_member_def by auto
+  qed
+
+  show "\<exists>amQ. \<forall>p. amplification_quorum_member amQ p \<longrightarrow> p \<notin> faulty"
+  text \<open>Proof sketch: @{term "(UNIV :: party set) - faulty"} also has enough members for the
+    amplification threshold because @{thm [source] fault_bound} implies @{term "n - f \<ge> f + 1"}.
+    Turning that set into an amplification quorum gives the desired witness.\<close>
+  proof -
+    let ?S = "(UNIV :: party set) - faulty"
+    have card_S: "card ?S = n - f"
+      by (simp add: n_def f_def Finite_Set.card_Diff_subset)
+    have am_carrier: "?S \<in> {S :: party set. card S \<ge> f + 1}"
+    proof
+      have "n - f \<ge> f + 1"
+        using fault_bound by linarith
+      with card_S show "card ?S \<ge> f + 1"
+        by simp
+    qed
+    let ?amQ = "Abs_amplification_quorum ?S"
+    have rep_amQ: "Rep_amplification_quorum ?amQ = ?S"
+      using am_carrier by (simp add: Abs_amplification_quorum_inverse)
+    show ?thesis
+      using rep_amQ unfolding amplification_quorum_member_def by auto
+  qed
+
+  show "\<exists>vtQ. \<forall>p. maj_quorum_member vtQ p \<longrightarrow> p \<notin> faulty"
+  text \<open>Proof sketch: Use the nonfaulty non-broadcaster parties as the carrier. If the broadcaster
+    is faulty this is @{term "UNIV - faulty"}; otherwise it is @{term "(UNIV - faulty) - {broadcaster}"}.
+    In both cases the resulting set still reaches the majority threshold.\<close>
+  proof -
+    let ?S = "((UNIV :: party set) - faulty) - {broadcaster}"
+    have card_nonfaulty: "card ((UNIV :: party set) - faulty) = n - f"
+      by (simp add: n_def f_def Finite_Set.card_Diff_subset)
+    have vt_carrier: "?S \<in> {S :: party set. broadcaster \<notin> S \<and> card S \<ge> \<lceil>real n / 2\<rceil>}"
+    proof -
+      have broadcaster_notin: "broadcaster \<notin> ?S"
+        by simp
+      have card_bound: "card ?S \<ge> \<lceil>real n / 2\<rceil>"
+      proof (cases "broadcaster \<in> faulty")
+        case True
+        have card_S: "card ?S = n - f"
+          using True card_nonfaulty by simp
+        have "real (n - f) \<ge> real n / 2"
+          using fault_bound by linarith
+        then have "\<lceil>real (n - f)\<rceil> \<ge> \<lceil>real n / 2\<rceil>"
+          by (intro ceiling_mono)
+        with card_S show ?thesis
+          by simp
+      next
+        case False
+        have card_S: "card ?S = n - f - 1"
+          using False card_nonfaulty by (simp add: Finite_Set.card_Diff_singleton)
+        have n_bound: "2 * f + 2 \<le> n"
+        proof (cases "f = 0")
+          case True
+          then show ?thesis using two_parties by simp
+        next
+          case False
+          then have "f \<ge> 1" by simp
+          then show ?thesis using fault_bound by linarith
+        qed
+        have "real (n - f - 1) \<ge> real n / 2"
+          using n_bound by linarith
+        then have "\<lceil>real (n - f - 1)\<rceil> \<ge> \<lceil>real n / 2\<rceil>"
+          by (intro ceiling_mono)
+        with card_S show ?thesis
+          by simp
+      qed
+      show ?thesis
+        using broadcaster_notin card_bound by simp
+    qed
+    let ?vtQ = "Abs_maj_quorum ?S"
+    have rep_vtQ: "Rep_maj_quorum ?vtQ = ?S"
+      using vt_carrier by (simp add: Abs_maj_quorum_inverse)
+    show ?thesis
+      using rep_vtQ unfolding maj_quorum_member_def by auto
+  qed
+
+
+  show "\<exists>quQ. \<forall>p. classic_quorum_member quQ p \<longrightarrow> p \<notin> faulty"
+  text \<open>Proof sketch: Reuse the nonfaulty non-broadcaster parties as the carrier. The same case
+    split on whether @{term broadcaster} is faulty shows that this set also meets the classic-quorum
+    threshold, so it yields a classic quorum all of whose members are nonfaulty.\<close>
+  proof -
+    let ?S = "((UNIV :: party set) - faulty) - {broadcaster}"
+    have card_nonfaulty: "card ((UNIV :: party set) - faulty) = n - f"
+      by (simp add: n_def f_def Finite_Set.card_Diff_subset)
+    have qu_carrier: "?S \<in> {S :: party set. broadcaster \<notin> S \<and> card S \<ge> \<lceil>real (n + f - 1) / 2\<rceil>}"
+    proof -
+      have broadcaster_notin: "broadcaster \<notin> ?S"
+        by simp
+      have card_bound: "card ?S \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
+      proof (cases "broadcaster \<in> faulty")
+        case True
+        have card_S: "card ?S = n - f"
+          using True card_nonfaulty by simp
+        have "real (n - f) \<ge> real (n + f - 1) / 2"
+          using fault_bound by linarith
+        then have "\<lceil>real (n - f)\<rceil> \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
+          by (intro ceiling_mono)
+        with card_S show ?thesis
+          by simp
+      next
+        case False
+        have card_S: "card ?S = n - f - 1"
+          using False card_nonfaulty by (simp add: Finite_Set.card_Diff_singleton)
+        have n_bound: "3 * f + 1 \<le> n"
+          using fault_bound by linarith
+        have "real (n - f - 1) \<ge> real (n + f - 1) / 2"
+          using n_bound by linarith
+        then have "\<lceil>real (n - f - 1)\<rceil> \<ge> \<lceil>real (n + f - 1) / 2\<rceil>"
+          by (intro ceiling_mono)
+        with card_S show ?thesis
+          by simp
+      qed
+      show ?thesis
+        using broadcaster_notin card_bound by simp
+    qed
+    let ?quQ = "Abs_classic_quorum ?S"
+    have rep_quQ: "Rep_classic_quorum ?quQ = ?S"
+      using qu_carrier by (simp add: Abs_classic_quorum_inverse)
+    show ?thesis
+      using rep_quQ unfolding classic_quorum_member_def by auto
+  qed
+
+  show "\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p" for opQ
+  text \<open>Proof sketch: @{term "Rep_opt_quorum opQ"} is too large to fit inside @{term faulty}.
+    The optimistic threshold forces @{term "int f < max 1 \<lceil>real (n + 2 * f - 2) / 2\<rceil>"}, and the
+    representing set has at least that many members, so it must contain a nonfaulty party.\<close>
+  proof -
+    have opQ_card: "max 1 \<lceil>real (n + 2 * f - 2) / 2\<rceil> \<le> int (card (Rep_opt_quorum opQ))"
+      using Rep_opt_quorum[of opQ] by auto
+    have opt_thresh: "int f < max 1 \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
+    proof (cases "f = 0")
+      case True
+      then show ?thesis by simp
+    next
+      case False
+      then have f_pos: "f \<ge> 1" by simp
+      have "4 \<le> n"
+        using fault_bound f_pos by linarith
+      then have "real f < real (n + 2 * f - 2) / 2"
+        by linarith
+      then have "int f < \<lceil>real (n + 2 * f - 2) / 2\<rceil>"
+        by (simp add: less_ceiling_iff)
+      then show ?thesis
+        by simp
+    qed
+    have "int (card faulty) < int (card (Rep_opt_quorum opQ))"
+    proof -
+      have "int f < int (card (Rep_opt_quorum opQ))"
+        using opQ_card opt_thresh by linarith
+      then show ?thesis
+        by (simp add: f_def)
+    qed
+    then have "card faulty < card (Rep_opt_quorum opQ)"
+      by simp
+    then have "\<not> Rep_opt_quorum opQ \<subseteq> faulty"
+      by (metis card_mono finite leD)
+    then obtain p where "p \<in> Rep_opt_quorum opQ" and "p \<notin> faulty"
+      by blast
+    then show ?thesis
+      unfolding opt_quorum_member_def by blast
+  qed
+
   show "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ\<^sub>1 p \<and> opt_quorum_member opQ\<^sub>2 p)" for opQ\<^sub>1 opQ\<^sub>2
   text \<open>Proof sketch: Apply @{thm [source] card_lemma_3} to the representing sets @{term "Rep_opt_quorum opQ\<^sub>1"} and @{term "Rep_opt_quorum opQ\<^sub>2"}. Any witness in their nonfaulty intersection immediately yields the required quorum members.\<close>
   proof
@@ -427,6 +628,40 @@ proof (standard)
       unfolding classic_quorum_member_def by blast
   qed
 
+  show "\<exists>p. p \<notin> faulty \<and> classic_quorum_member Q p" for Q
+  text \<open>Proof sketch: Every classic quorum is too large to be contained in @{term faulty}. Its
+    threshold implies @{term "int f < \<lceil>real (n + f - 1) / 2\<rceil>"}, while the representing set of
+    @{term Q} has at least that many members, so it contains a nonfaulty party.\<close>
+  proof -
+    have Q_card: "\<lceil>real (n + f - 1) / 2\<rceil> \<le> int (card (Rep_classic_quorum Q))"
+      using Rep_classic_quorum[of Q] by auto
+    have qu_thresh: "int f < \<lceil>real (n + f - 1) / 2\<rceil>"
+    proof (cases "f = 0")
+      case True
+      have "0 < real (n + f - 1) / 2"
+        using two_parties True by linarith
+      then show ?thesis
+        using True by simp
+    next
+      case False
+      then have f_pos: "f \<ge> 1" by simp
+      have "f + 1 < n"
+        using fault_bound f_pos by linarith
+      then have "real f < real (n + f - 1) / 2"
+        by linarith
+      then show ?thesis
+        by (simp add: less_ceiling_iff)
+    qed
+    have "card faulty < card (Rep_classic_quorum Q)"
+      using Q_card qu_thresh by (simp add: f_def)
+    then have "\<not> Rep_classic_quorum Q \<subseteq> faulty"
+      by (metis card_mono finite leD)
+    then obtain p where "p \<in> Rep_classic_quorum Q" and "p \<notin> faulty"
+      by blast
+    then show ?thesis
+      unfolding classic_quorum_member_def by blast
+  qed
+
   show "\<exists>p. p \<notin> faulty \<and> maj_quorum_member vtQ p" for vtQ
   text \<open>Proof sketch: @{thm [source] card_lemma_6} applies directly to @{term "Rep_maj_quorum vtQ"}, whose cardinality is part of the typedef invariant.\<close>
     using Rep_maj_quorum card_lemma_6 maj_quorum_member_def by fastforce
@@ -476,13 +711,9 @@ proof (standard)
     let ?amQ = "Abs_amplification_quorum ?S"
     have rep_amQ: "Rep_amplification_quorum ?amQ = ?S"
       using am_carrier by (simp add: Abs_amplification_quorum_inverse)
-    show "\<exists>amQ. \<forall>p. amplification_quorum_member amQ p \<longrightarrow> p \<notin> faulty \<and> commit_quorum_member coQ p"
+    show ?thesis
       using amplification_quorum_member_def commit_quorum_member_def rep_amQ by auto
   qed
-
-  show "\<And> Q .\<exists>p. p \<notin> faulty \<and> classic_quorum_member Q p"
-    oops
-
 qed
 
 end

@@ -32,7 +32,7 @@ locale abstract_domain_model =
     "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> maj_quorum_member vtQ p)"
     and opt_quorum_intersects_classic_quorum:
     "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> opt_quorum_member opQ p \<and> classic_quorum_member quQ p)"
-    and quorum_intersection:
+    and classic_quorum_intersection:
     "broadcaster \<in> faulty \<longrightarrow> (\<exists>p. p \<notin> faulty \<and> classic_quorum_member quQ\<^sub>1 p \<and> classic_quorum_member quQ\<^sub>2 p)"
     and quorum_not_faulty:
     "\<exists>p. p \<notin> faulty \<and> classic_quorum_member Q p"
