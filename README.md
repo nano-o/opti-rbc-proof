@@ -8,6 +8,7 @@ We show 3 properties:
 - If a non-faulty party commits, then eventually all non-faulty parties commit (see action `check_totality` in [opti_rbc.ivy](./opti_rbc.ivy))
 
 The proof has two parts: an ivy proof based on an abstract model in [opti_rbc.ivy](./opti_rbc.ivy), and a separate proof in Isabelle/HOL that the abstract model is sound in [AxiomaticDomainModel](https://htmlpreview.github.io/?https://raw.githubusercontent.com/nano-o/opti-rbc-proof/main/OptiRBC/browser_info/AxiomaticDomainModel.html).
+The safety-proof methodology is comparable to the methodology of the paper [Verification of Threshold-Based Distributed Algorithms by Decomposition to Decidable Logics](https://arxiv.org/abs/1905.07805), except that the BAPA part was done (mostly by gpt-5.4) in Isabelle/HOL.
 
 ## Checking the Ivy proof
 
