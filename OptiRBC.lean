@@ -52,9 +52,6 @@ immutable individual pv : val -- proposal of the non-faulty broadcaster (if any)
 -- Abstract domain model assumptions (quorum intersection properties)
 --------------------------------------------------------------------------------
 
--- assumption [faulty_broadcaster]
---   faulty broadcaster -- temporary
-
 -- classic, vote, and optimistic quorums do not contain the broadcaster
 assumption [broadcaster_not_in_classic_quorum]
   ∀ (q : classic_quorum), ¬ classic_quorum_member q broadcaster
@@ -64,9 +61,6 @@ assumption [broadcaster_not_in_maj_quorum]
 
 assumption [broadcaster_not_in_opt_quorum]
   ∀ (q : opt_quorum), ¬ opt_quorum_member q broadcaster
-
--- assumption [test]
---   ∀ q, ¬ commit_quorum_member q broadcaster
 
 -- the set of non-faulty parties satisfies all the quorum thresholds except the optimistic quorum threshold
 
