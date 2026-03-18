@@ -239,34 +239,34 @@ definition propose_enabled =
 
 relation echo_enabled(P:party, V:val)
 definition echo_enabled(P, V) =
-    ~faulty(P) & P ~= broadcaster & (forall V2. ~echo(P, V2)) & proposal(V)
+    ~faulty(P) & P ~= broadcaster & ~faulty(broadcaster) & (forall V2. ~echo(P, V2)) & proposal(V)
 
 relation vote_enabled(P:party, V:val)
 definition vote_enabled(P, V) =
     ~faulty(P) & P ~= broadcaster & (forall V2. ~vote(P, V2))
-    & (exists Q. forall P2. maj_quorum_member(Q, P2) -> echo(P2, V))
+    & (exists Q. forall P2. maj_quorum_member(Q, P2) -> ~faulty(P2) & echo(P2, V))
 
 relation ack_enabled(P:party, V:val)
 definition ack_enabled(P, V) =
     ~faulty(P) & P ~= broadcaster & (forall V2. ~ack(P, V2))
-    & ((exists Q. forall P2. classic_quorum_member(Q, P2) -> vote(P2, V))
-       | (exists Q. forall P2. classic_quorum_member(Q, P2) -> echo(P2, V)))
+    & ((exists Q. forall P2. classic_quorum_member(Q, P2) -> ~faulty(P2) & vote(P2, V))
+       | (exists Q. forall P2. classic_quorum_member(Q, P2) -> ~faulty(P2) & echo(P2, V)))
 
 relation ready_enabled(P:party, V:val)
 definition ready_enabled(P, V) =
     ~faulty(P) & (forall V2. ~ready(P, V2))
-    & ((exists Q. forall P2. classic_quorum_member(Q, P2) -> ack(P2, V))
-       | (exists Q. forall P2. amplification_quorum_member(Q, P2) -> ready(P2, V)))
+    & ((exists Q. forall P2. classic_quorum_member(Q, P2) -> ~faulty(P2) & ack(P2, V))
+       | (exists Q. forall P2. amplification_quorum_member(Q, P2) -> ~faulty(P2) & ready(P2, V)))
 
 relation opt_commit_enabled(P:party, V:val)
 definition opt_commit_enabled(P, V) =
     ~faulty(P) & P ~= broadcaster & (forall V2. ~committed(P, V2))
-    & (exists Q. forall P2. opt_quorum_member(Q, P2) -> echo(P2, V))
+    & (exists Q. forall P2. opt_quorum_member(Q, P2) -> ~faulty(P2) & echo(P2, V))
 
 relation commit_enabled(P:party, V:val)
 definition commit_enabled(P, V) =
     ~faulty(P) & (forall V2. ~committed(P, V2))
-    & (exists Q. forall P2. commit_quorum_member(Q, P2) -> ready(P2, V))
+    & (exists Q. forall P2. commit_quorum_member(Q, P2) -> ~faulty(P2) & ready(P2, V))
 
 ################################################################################
 # Liveness properties
