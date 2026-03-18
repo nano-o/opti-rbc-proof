@@ -124,13 +124,13 @@ assumption [amplification_quorum_has_nonfaulty_member]
 assumption [opt_quorum_contains_maj_quorum]
   ∀ (q : opt_quorum),
     faulty broadcaster →
-      (∃ (q' : maj_quorum), ∀ p, maj_quorum_member q' p → ¬ faulty p ∧ opt_quorum_member q p)
+      (∃ (p' : maj_quorum), ∀ p, maj_quorum_member p' p → ¬ faulty p ∧ opt_quorum_member q p)
 
 -- For any commit quorum there exists an amplification quorum whose members
 -- are all non-faulty and in the commit quorum.
 assumption [commit_quorum_contains_non_faulty_amplification_quorum]
   ∀ (q : commit_quorum),
-    ∃ (q' : amplification_quorum), ∀ p, amplification_quorum_member q' p → ¬ faulty p ∧ commit_quorum_member q p
+    ∃ (p' : amplification_quorum), ∀ p, amplification_quorum_member p' p → ¬ faulty p ∧ commit_quorum_member q p
 
 --------------------------------------------------------------------------------
 -- Initialization
@@ -167,7 +167,7 @@ action echoStep (p : party) (v : val) {
 }
 -- Enabledness condition:
 ghost relation echo_enabled (p : party) (v : val):=
-   ¬ faulty p ∧ p ≠ broadcaster ∧ (∀ v', ¬ echo p v') ∧ proposal v
+   ¬ faulty p ∧ p ≠ broadcaster ∧ (∀ v', ¬ echo p v') ∧ ¬ faulty broadcaster ∧ proposal v
 
 -- A non-broadcaster party votes for a value after seeing a majority-quorum
 -- of echoes (unless it has already voted for some other value).
@@ -178,57 +178,57 @@ action voteStep (p : party) (v : val) {
   vote p v := true
 }
 ghost relation vote_enabled (p : party) (v : val) :=
-  ¬ faulty p ∧ p ≠ broadcaster ∧ (∀ v', ¬ vote p v') ∧ (∃ (q : maj_quorum), ∀ p', maj_quorum_member q p' → echo p' v)
+  ¬ faulty p ∧ p ≠ broadcaster ∧ (∀ v', ¬ vote p v') ∧ (∃ (q : maj_quorum), ∀ p', maj_quorum_member q p' → ¬ faulty p' ∧ echo p' v)
 
 -- A non-broadcaster party sends an ack after seeing either a quorum of votes
 -- or a quorum of echoes (unless it has already acked some other value).
 action ackStep (p : party) (v : val) {
   require p ≠ broadcaster
   require ∀ v', ¬ ack p v'
-  require (∃ (q : classic_quorum), ∀ q', classic_quorum_member q q' → vote q' v)
-       ∨ (∃ (q : classic_quorum), ∀ q', classic_quorum_member q q' → echo q' v)
+  require (∃ (q : classic_quorum), ∀ p', classic_quorum_member q p' → vote p' v)
+       ∨ (∃ (q : classic_quorum), ∀ p', classic_quorum_member q p' → echo p' v)
   ack p v := true
 }
 ghost relation ack_enabled (p : party) (v : val) :=
   ¬ faulty p ∧ p ≠ broadcaster ∧ (∀ v', ¬ ack p v') ∧
-    ((∃ (q : classic_quorum), ∀ p', classic_quorum_member q p' → vote p' v)
-      ∨ (∃ (q : classic_quorum), ∀ p', classic_quorum_member q p' → echo p' v))
+    ((∃ (q : classic_quorum), ∀ p', classic_quorum_member q p' → ¬ faulty p' ∧ vote p' v)
+      ∨ (∃ (q : classic_quorum), ∀ p', classic_quorum_member q p' → ¬ faulty p' ∧ echo p' v))
 
 -- A non-broadcaster party becomes ready after seeing either a quorum of acks
 -- or an amplification-quorum of readys (unless it has already become ready for some other value).
 action readyStep (p : party) (v : val) {
   require ∀ v', ¬ ready p v'
-  require (∃ (q : classic_quorum), ∀ q', classic_quorum_member q q' → ack q' v)
-       ∨ (∃ (q : amplification_quorum), ∀ q', amplification_quorum_member q q' → ready q' v)
+  require (∃ (q : classic_quorum), ∀ p', classic_quorum_member q p' → ¬ faulty p' ∧ ack p' v)
+       ∨ (∃ (q : amplification_quorum), ∀ p', amplification_quorum_member q p' → ¬ faulty p' ∧ ready p' v)
   ready p v := true
 }
 ghost relation ready_enabled (p : party) (v : val) :=
   ¬ faulty p ∧ (∀ v', ¬ ready p v') ∧
-    ((∃ (q : classic_quorum), ∀ p', classic_quorum_member q p' → ack p' v)
-      ∨ (∃ (q : amplification_quorum), ∀ p', amplification_quorum_member q p' → ready p' v))
+    ((∃ (q : classic_quorum), ∀ p', classic_quorum_member q p' → ¬ faulty p' ∧ ack p' v)
+      ∨ (∃ (q : amplification_quorum), ∀ p', amplification_quorum_member q p' → ¬ faulty p' ∧ ready p' v))
 
 -- Optimistic commit: a non-broadcaster party commits after seeing an
 -- optimistic-quorum of echoes (unless it has already committed some other value).
 action optCommitStep (p : party) (v : val) {
   require p ≠ broadcaster
   require ∀ v', ¬ committed p v'
-  require ∃ (q : opt_quorum), ∀ q', opt_quorum_member q q' → echo q' v
+  require ∃ (q : opt_quorum), ∀ p', opt_quorum_member q p' → echo p' v
   committed p v := true
 }
 ghost relation optCommit_enabled (p : party) (v : val) :=
   ¬ faulty p ∧ p ≠ broadcaster ∧ (∀ v', ¬ committed p v') ∧
-    (∃ (q : opt_quorum), ∀ p', opt_quorum_member q p' → echo p' v)
+    (∃ (q : opt_quorum), ∀ p', opt_quorum_member q p' → ¬ faulty p' ∧ echo p' v)
 
 -- Normal commit: a non-broadcaster party commits after seeing a
 -- commit-quorum of readys (unless it has already committed some other value).
 action commitStep (p : party) (v : val) {
   require ∀ v', ¬ committed p v'
-  require ∃ (q : commit_quorum), ∀ q', commit_quorum_member q q' → ready q' v
+  require ∃ (q : commit_quorum), ∀ p', commit_quorum_member q p' → ready p' v
   committed p v := true
 }
 ghost relation commit_enabled (p : party) (v : val) :=
   ¬ faulty p ∧ (∀ v', ¬ committed p v')
-  ∧ (∃ (q : commit_quorum), ∀ p', commit_quorum_member q p' → ready p' v)
+  ∧ (∃ (q : commit_quorum), ∀ p', commit_quorum_member q p' → ¬ faulty p' ∧ ready p' v)
 
 -- Byzantine step: a faulty broadcaster can set proposal arbitrarily.
 action byzProposal {
