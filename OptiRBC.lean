@@ -345,12 +345,194 @@ invariant [inv8] ∀ (q : opt_quorum) (v2 : val),
 invariant [inv9] ∀ p v,
   ¬ faulty broadcaster ∧ ¬ faulty p ∧ committed p v → proposal pv
 
-set_option veil.smt.timeout 30 
-set_option veil.smt.finiteModelFind false
+set_option veil.smt.timeout 30
+-- set_option veil.smt.finiteModelFind false -- this messes the solver up
 
 #gen_spec
 
 -- Did not terminate in any reasonable time:
 -- #check_invariants
+
+
+theorem check_totality_doesNotThrow (ρ : Type) (σ : Type) (party : Type) [party_dec_eq : DecidableEq.{1} party]
+    [party_inhabited : Inhabited.{1} party] (val : Type) [val_dec_eq : DecidableEq.{1} val]
+    [val_inhabited : Inhabited.{1} val] (opt_quorum : Type) [opt_quorum_dec_eq : DecidableEq.{1} opt_quorum]
+    [opt_quorum_inhabited : Inhabited.{1} opt_quorum] (maj_quorum : Type)
+    [maj_quorum_dec_eq : DecidableEq.{1} maj_quorum] [maj_quorum_inhabited : Inhabited.{1} maj_quorum]
+    (classic_quorum : Type) [classic_quorum_dec_eq : DecidableEq.{1} classic_quorum]
+    [classic_quorum_inhabited : Inhabited.{1} classic_quorum] (amplification_quorum : Type)
+    [amplification_quorum_dec_eq : DecidableEq.{1} amplification_quorum]
+    [amplification_quorum_inhabited : Inhabited.{1} amplification_quorum] (commit_quorum : Type)
+    [commit_quorum_dec_eq : DecidableEq.{1} commit_quorum] [commit_quorum_inhabited : Inhabited.{1} commit_quorum]
+    (χ : State.Label → Type)
+    [χ_rep :
+      ∀ __veil_f,
+        Veil.FieldRepresentation
+          (State.Label.toDomain party val opt_quorum maj_quorum classic_quorum amplification_quorum commit_quorum
+            __veil_f)
+          (State.Label.toCodomain party val opt_quorum maj_quorum classic_quorum amplification_quorum commit_quorum
+            __veil_f)
+          (χ __veil_f)]
+    [χ_rep_lawful :
+      ∀ __veil_f,
+        Veil.LawfulFieldRepresentation
+          (State.Label.toDomain party val opt_quorum maj_quorum classic_quorum amplification_quorum commit_quorum
+            __veil_f)
+          (State.Label.toCodomain party val opt_quorum maj_quorum classic_quorum amplification_quorum commit_quorum
+            __veil_f)
+          (χ __veil_f) (χ_rep __veil_f)]
+    [σ_sub : IsSubStateOf (@State χ) σ]
+    [ρ_sub :
+      IsSubReaderOf (@Theory party val opt_quorum maj_quorum classic_quorum amplification_quorum commit_quorum) ρ]
+    (check_totality_dec_0 : _)
+    (check_totality_dec_1 : _)
+    (check_totality_dec_2 : _)
+    (check_totality_dec_3 : _)
+    (check_totality_dec_4 : _)
+    (check_totality_dec_5 : _) :
+    ∀ (p1 : party) (p2 : party) (v : val) (__veil_ex : Int),
+      Veil.VeilM.doesNotThrowAssuming_ex
+        (@check_totality.ext ρ σ party party_dec_eq party_inhabited val val_dec_eq val_inhabited opt_quorum
+          opt_quorum_dec_eq opt_quorum_inhabited maj_quorum maj_quorum_dec_eq maj_quorum_inhabited classic_quorum
+          classic_quorum_dec_eq classic_quorum_inhabited amplification_quorum amplification_quorum_dec_eq
+          amplification_quorum_inhabited commit_quorum commit_quorum_dec_eq commit_quorum_inhabited χ χ_rep χ_rep_lawful
+          σ_sub ρ_sub check_totality_dec_0 check_totality_dec_1 check_totality_dec_2 check_totality_dec_3
+          check_totality_dec_4 check_totality_dec_5 p1 p2 v)
+        (@Assumptions ρ party party_dec_eq party_inhabited val val_dec_eq val_inhabited opt_quorum opt_quorum_dec_eq
+          opt_quorum_inhabited maj_quorum maj_quorum_dec_eq maj_quorum_inhabited classic_quorum classic_quorum_dec_eq
+          classic_quorum_inhabited amplification_quorum amplification_quorum_dec_eq amplification_quorum_inhabited
+          commit_quorum commit_quorum_dec_eq commit_quorum_inhabited ρ_sub)
+        (@Invariants ρ σ party party_dec_eq party_inhabited val val_dec_eq val_inhabited opt_quorum opt_quorum_dec_eq
+          opt_quorum_inhabited maj_quorum maj_quorum_dec_eq maj_quorum_inhabited classic_quorum classic_quorum_dec_eq
+          classic_quorum_inhabited amplification_quorum amplification_quorum_dec_eq amplification_quorum_inhabited
+          commit_quorum commit_quorum_dec_eq commit_quorum_inhabited χ χ_rep χ_rep_lawful σ_sub ρ_sub)
+        __veil_ex :=
+  by
+  veil_human
+  intro hfp1 hfp2 hcp1 h_prop h_echo_dis h_vote_dis h_ack_dis h_ready_dis h_commit_dis hcp2
+  exfalso
+  -- Extract invariant components (order differs from Giuliano.lean)
+  have inv1 := hinv.2.1
+  have inv2 := hinv.2.2.1
+  have inv4 := hinv.2.2.2.2.2.2.2.1
+  have inv6 := hinv.2.2.2.2.2.2.2.2.1
+  have inv7 := hinv.2.2.2.2.2.2.1
+  have inv8 := hinv.2.2.2.2.2.2.2.2.2.1
+  have inv9 := hinv.2.2.2.2.2.2.2.2.2.2
+  have agreement := hinv.2.2.2.2.2.1
+  -- Extract assumption components
+  have h_bc_cl := has.1
+  have h_bc_mj := has.2.1
+  obtain ⟨Q_c, hQ_c⟩ := has.2.2.2.1            -- non-faulty commit quorum
+  obtain ⟨Q_mf, hQ_mf⟩ := has.2.2.2.2.2.1      -- non-faulty maj quorum
+  obtain ⟨Q_cf, hQ_cf⟩ := has.2.2.2.2.2.2.1    -- non-faulty classic quorum
+  have h_q_nf := has.2.2.2.2.2.2.2.2.2.2.2.2.1         -- quorum_not_faulty
+  have h_amp_nf := has.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1   -- amp_quorum_has_nf_member
+  have h_opt_maj := has.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 -- opt_contains_maj (if bc faulty)
+  -- p2 hasn't committed any value (by agreement + hcp2)
+  have p2_nc : ∀ V', st.committed p2 V' = false := by
+    intro V'
+    by_contra h
+    simp only [Bool.not_eq_false] at h
+    have h_eq : v = V' := agreement p1 p2 v V' hfp1 hfp2 hcp1 h
+    subst V'
+    rw [h] at hcp2
+    cases hcp2
+  -- From commit_disabled: some member of Q_c not ready for v
+  obtain ⟨x₀, hx₀m, hx₀r⟩ := h_commit_dis p2 v hfp2 p2_nc Q_c
+  have hx₀nf := hQ_c x₀ hx₀m
+  -- Suffices to show x₀ is ready for v (contradicts hx₀r)
+  suffices ∀ P, th.faulty P = false → st.ready P v = true by
+    have hx₀_ready_false : st.ready x₀ v = false := hx₀r hx₀nf
+    simpa [hx₀_ready_false] using this x₀ hx₀nf
+  -- Prove all non-faulty parties are ready for v
+  intro P hP
+  rcases inv1 p1 v hfp1 hcp1 with ⟨Q_a, hQ_a⟩ | ⟨Q_o, hQ_o⟩
+  · -- Case (a): amplification quorum Q_a, all non-faulty and ready for v
+    by_contra hPnr; simp only [Bool.not_eq_true] at hPnr
+    by_cases hPr : ∀ V, st.ready P V = false
+    · -- P not ready at all: h_ready_dis + Q_a gives contradiction
+      obtain ⟨y, hym, hyr⟩ := (h_ready_dis P v hP hPr).2 Q_a
+      have hy_ready_false : st.ready y v = false := hyr (hQ_a y hym).1
+      simpa [hy_ready_false] using (hQ_a y hym).2
+    · -- P ready for V' ≠ v: inv4 with Q_a member gives V' = v, contradiction
+      push_neg at hPr; obtain ⟨V', hV'⟩ := hPr; simp only [Bool.not_eq_false] at hV'
+      obtain ⟨p₀, hp₀nf, hp₀m⟩ := h_amp_nf Q_a
+      have h_eq : v = V' := inv4 p₀ P v V' hp₀nf hP (hQ_a p₀ hp₀m).2 hV'
+      subst V'
+      rw [hV'] at hPnr
+      cases hPnr
+  · -- Case (b): opt quorum Q_o, non-faulty members echoed v
+    -- Key consequences: non-faulty votes/acks only for v
+    have nva := inv6 v Q_o hQ_o   -- non-faulty votes only for v
+    have naa := inv8 Q_o v hQ_o   -- non-faulty acks only for v
+    -- Step 1: all non-faulty non-broadcasters voted for v
+    have all_voted : ∀ P', th.faulty P' = false → P' ≠ th.broadcaster → st.vote P' v = true := by
+      intro P' hP' hP'nb; by_contra hno; simp only [Bool.not_eq_true] at hno
+      have nv : ∀ V, st.vote P' V = false := by
+        intro V; by_cases hVv : V = v
+        · subst hVv; exact hno
+        · by_contra h; simp only [Bool.not_eq_false] at h; exact absurd (nva P' V hP' h) hVv
+      by_cases hbf : th.faulty th.broadcaster = true
+      · -- Broadcaster faulty: opt_contains_maj gives maj quorum in Q_o, all echoed v
+        obtain ⟨Q_m, hQ_m⟩ := h_opt_maj Q_o hbf
+        obtain ⟨y, hym, hyr⟩ := h_vote_dis P' v hP' hP'nb nv Q_m
+        have hy_echo_false : st.echo y v = false := hyr (hQ_m y hym).1
+        simpa [hy_echo_false] using hQ_o y (hQ_m y hym).2 (hQ_m y hym).1
+      · -- Broadcaster non-faulty: all non-faulty echoed pv = v
+        simp only [Bool.not_eq_true] at hbf
+        have h_pv := (inv7 hbf).2 p1 v hfp1 |>.2.2.2.2 hcp1  -- proposal v = true
+        obtain ⟨y, hym, hyr⟩ := h_vote_dis P' v hP' hP'nb nv Q_mf
+        have hynf := hQ_mf y hym
+        have hynb : y ≠ th.broadcaster := by
+          intro hy
+          subst hy
+          simpa [hym] using h_bc_mj Q_mf
+        by_cases hye : ∀ V, st.echo y V = false
+        · have h_prop_false : st.proposal v = false := h_echo_dis y v hynf hynb hye hbf
+          rw [h_pv] at h_prop_false
+          cases h_prop_false
+        · push_neg at hye; obtain ⟨V', hV'e⟩ := hye; simp only [Bool.not_eq_false] at hV'e
+          have hV'eq := (inv7 hbf).1 V' ((inv7 hbf).2 y V' hynf |>.1 hV'e)
+          have hveq := (inv7 hbf).1 v h_pv
+          rw [hV'eq, ← hveq] at hV'e
+          have hy_echo_false : st.echo y v = false := hyr hynf
+          rw [hV'e] at hy_echo_false
+          cases hy_echo_false
+    -- Step 2: all non-faulty non-broadcasters acked v
+    have all_acked : ∀ P', th.faulty P' = false → P' ≠ th.broadcaster → st.ack P' v = true := by
+      intro P' hP' hP'nb; by_contra hno; simp only [Bool.not_eq_true] at hno
+      have na : ∀ V, st.ack P' V = false := by
+        intro V; by_cases hVv : V = v
+        · subst hVv; exact hno
+        · exact naa P' V hP' hVv
+      obtain ⟨y, hym, hyr⟩ := (h_ack_dis P' v hP' hP'nb na).1 Q_cf
+      have hynb : y ≠ th.broadcaster := by
+        intro hy
+        subst hy
+        simpa [hym] using h_bc_cl Q_cf
+      have hy_vote_false : st.vote y v = false := hyr (hQ_cf y hym)
+      simpa [hy_vote_false] using all_voted y (hQ_cf y hym) hynb
+    -- Step 3: all non-faulty parties readied (and for v)
+    by_contra hPnr; simp only [Bool.not_eq_true] at hPnr
+    by_cases hPr : ∀ V, st.ready P V = false
+    · -- P not ready: h_ready_dis with Q_cf gives y ∈ Q_cf not acked v, contradiction
+      obtain ⟨y, hym, hyr⟩ := (h_ready_dis P v hP hPr).1 Q_cf
+      have hynb : y ≠ th.broadcaster := by
+        intro hy
+        subst hy
+        simpa [hym] using h_bc_cl Q_cf
+      have hy_ack_false : st.ack y v = false := hyr (hQ_cf y hym)
+      simpa [hy_ack_false] using all_acked y (hQ_cf y hym) hynb
+    · -- P ready for V': by inv2 + quorum_not_faulty + naa, V' = v, contradiction
+      push_neg at hPr; obtain ⟨V', hV'⟩ := hPr; simp only [Bool.not_eq_false] at hV'
+      obtain ⟨Q, hQ⟩ := inv2 P V' hP hV'
+      obtain ⟨P₃, hP₃nf, hP₃m⟩ := h_q_nf Q
+      have hP₃a := hQ P₃ hP₃m hP₃nf
+      by_cases hVv : V' = v
+      · subst hVv
+        rw [hV'] at hPnr
+        cases hPnr
+      · exact absurd hP₃a (by simp [naa P₃ V' hP₃nf hVv])
 
 end OptiRBC
